@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+:root {
+  /* Primary Colors */
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-secondary: #0F172A;
+  
+  /* Backgrounds */
+  --color-background: #F8FAFC;
+  --color-card: #FFFFFF;
+  
+  /* Borders */
+  --color-border: #E2E8F0;
+  
+  /* Text */
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  
+  /* Status Colors */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  
+  /* Legacy support */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark Mode Colors */
+    --color-background: #020617;
+    --color-card: #0F172A;
+    --color-border: #1E293B;
+    --color-text: #F8FAFC;
+    --color-text-muted: #94A3B8;
+    
+    /* Legacy support */
+    --background: #020617;
+    --foreground: #F8FAFC;
+  }
+}
+
+@theme inline {
+  /* Primary */
+  --color-primary: var(--color-primary);
+  --color-primary-foreground: #ffffff;
+  
+  /* Secondary */
+  --color-secondary: var(--color-secondary);
+  --color-secondary-foreground: #ffffff;
+  
+  /* Background */
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-text);
+  
+  /* Card */
+  --color-card: var(--color-card);
+  --color-card-foreground: var(--color-text);
+  
+  /* Muted */
+  --color-muted: #F1F5F9;
+  --color-muted-foreground: var(--color-text-muted);
+  
+  /* Accent */
+  --color-accent: #F1F5F9;
+  --color-accent-foreground: var(--color-text);
+  
+  /* Border */
+  --color-border: var(--color-border);
+  --color-input: var(--color-border);
+  --color-ring: var(--color-primary);
+  
+  /* Destructive */
+  --color-destructive: var(--color-error);
+  --color-destructive-foreground: #ffffff;
+  
+  /* Status */
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --color-info: var(--color-info);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Focus Styles */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Smooth Transitions */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
