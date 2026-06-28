@@ -50,7 +50,7 @@ export default function LoginPage() {
               </footer>
             </blockquote>
 
-            <div className="grid grid-cols-3 gap-4 rounded-xl border border-[#334155] bg-[#1E293B] p-6">
+            <div className="grid grid-cols-3 gap-4 rounded-xl border border-[#D9D9D9] bg-[#1E293B] p-6">
               <div>
                 <div className="text-3xl font-bold text-[#F8FAFC]">1000+</div>
                 <div className="text-sm text-[#94A3B8]">Businesses</div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-8 shadow-sm">
+            <div className="rounded-xl border border-[#D9D9D9] bg-white p-8 shadow-sm">
               <LoginForm />
             </div>
 

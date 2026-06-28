@@ -40,6 +40,7 @@ const navigation = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
+
 export function WorkspaceSidebar({ workspace, userRole }: WorkspaceSidebarProps) {
   const pathname = usePathname();
 
@@ -47,7 +48,7 @@ export function WorkspaceSidebar({ workspace, userRole }: WorkspaceSidebarProps)
     <div className="flex w-64 flex-col border-r bg-white">
       {/* Workspace Logo/Name */}
       <div className="flex h-16 items-center border-b px-6">
-        <Link href={`/${workspace.slug}/dashboard`} className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           {workspace.logo_url ? (
             <img
               src={workspace.logo_url}
@@ -70,7 +71,7 @@ export function WorkspaceSidebar({ workspace, userRole }: WorkspaceSidebarProps)
           return (
             <Link
               key={item.name}
-              href={`/${workspace.slug}${item.href}`}
+              href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive

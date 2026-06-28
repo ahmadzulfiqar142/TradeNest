@@ -56,16 +56,14 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
     try {
       const result = await createWorkspaceOnboarding(data);
       if (result?.error) {
+        if (result.redirectTo) {
+          window.location.href = result.redirectTo;
+          return;
+        }
         setError(result.error);
         setIsLoading(false);
-      } else if (result?.success && result?.workspace) {
-        onNext({ 
-          workspace: {
-            name: result.workspace.name,
-            slug: result.workspace.slug,
-          }, 
-          success: true 
-        });
+      } else if (result?.success && result?.redirectTo) {
+        window.location.href = result.redirectTo;
       }
     } catch (err) {
       setError("An unexpected error occurred");
@@ -92,7 +90,7 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Business Information Card */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-sm space-y-8">
+        <div className="rounded-2xl border border-[#D9D9D9] bg-white p-8 shadow-sm space-y-8">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DBEAFE]">
               <Building2 className="h-6 w-6 text-[#2563EB]" />
@@ -155,7 +153,7 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
         </div>
 
         {/* Contact Information Card */}
-        <div className="rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-sm space-y-8">
+        <div className="rounded-2xl border border-[#D9D9D9] bg-white p-8 shadow-sm space-y-8">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]">
               <Phone className="h-6 w-6 text-[#22C55E]" />

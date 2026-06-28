@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/supabase/server";
+import { WORKSPACE_COOKIE } from "@/lib/workspace-cookie";
 import {
   createWorkspaceSchema,
   updateWorkspaceSchema,
@@ -65,7 +67,15 @@ export async function createWorkspace(data: CreateWorkspaceFormValues) {
   }
 
   revalidatePath("/");
-  redirect(`/${workspace.slug}/dashboard`);
+
+  const cookieStore = await cookies();
+  cookieStore.set(WORKSPACE_COOKIE, workspace.id, {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+  });
+
+  redirect("/dashboard");
 }
 
 export async function updateWorkspace(

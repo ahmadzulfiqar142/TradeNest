@@ -1,39 +1,25 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/supabase/server";
+import { createClient, createAdminClient } from "@/supabase/server";
+import { setActiveWorkspaceId } from "@/lib/workspace-cookie";
 
 export default async function Home() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // Check if user is authenticated
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  // Get user's workspaces
-  const { data: workspaces } = await supabase
+  const admin = createAdminClient();
+  const { data: member } = await admin
     .from("workspace_members")
-    .select(
-      `
-      workspaces (
-        slug
-      )
-    `
-    )
+    .select("workspace_id")
     .eq("user_id", user.id)
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
-  if (workspaces && workspaces.length > 0) {
-    // Redirect to first workspace dashboard
-    const workspace = workspaces[0].workspaces as { slug: string } | null;
-    if (workspace) {
-      redirect(`/${workspace.slug}/dashboard`);
-    }
+  if (member?.workspace_id) {
+    await setActiveWorkspaceId(member.workspace_id);
+    redirect("/dashboard");
   }
 
-  // No workspaces found, redirect to onboarding
   redirect("/onboarding");
 }

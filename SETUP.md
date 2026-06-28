@@ -55,20 +55,22 @@ NEXT_PUBLIC_APP_NAME=Business Management System
 -- Copy and paste content from supabase/functions.sql
 ```
 
+**d) Create Storage Buckets and Policies (supabase/storage-policies.sql)**
+```sql
+-- Copy and paste content from supabase/storage-policies.sql
+```
+
 ### Step 6: Enable Authentication
 
 1. Go to Authentication > Providers
 2. Enable Email provider
 3. Configure email templates (optional)
 
-### Step 7: Setup Storage Buckets
+### Step 7: Verify Storage Buckets
 
-Go to Storage and create these buckets:
-
-- `product-images` (public)
-- `workspace-logos` (public)
-- `documents` (private)
-- `receipts` (private)
+The product image uploader uses the public `product-images` bucket created by
+`supabase/storage-policies.sql`. If uploads fail with a bucket or policy error,
+run that SQL file again in Supabase SQL Editor.
 
 ### Step 8: Run Development Server
 

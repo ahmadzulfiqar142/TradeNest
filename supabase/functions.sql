@@ -303,6 +303,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Auto-create profile when a new user signs up in auth.users
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.profiles (id, email, full_name)
+    VALUES (
+        NEW.id,
+        NEW.email,
+        NEW.raw_user_meta_data->>'full_name'
+    )
+    ON CONFLICT (id) DO NOTHING;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_new_user();
+
 -- Function to get dashboard statistics
 CREATE OR REPLACE FUNCTION get_dashboard_stats(p_workspace_id UUID)
 RETURNS JSON AS $$

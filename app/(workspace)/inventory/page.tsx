@@ -22,9 +22,6 @@ export default function InventoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-gray-600">
-            The inventory module will include:
-          </p>
           <ul className="mt-4 space-y-2 text-sm text-gray-600">
             <li>• Stock in/out transactions</li>
             <li>• Stock adjustments</li>

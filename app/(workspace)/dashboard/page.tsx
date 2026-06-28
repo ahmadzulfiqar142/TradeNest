@@ -1,29 +1,16 @@
 import { createClient } from "@/supabase/server";
+import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, ShoppingCart, Package, Users, TrendingUp, AlertCircle } from "lucide-react";
+import { redirect } from "next/navigation";
 
-export default async function DashboardPage({
-  params,
-}: {
-  params: { workspaceSlug: string };
-}) {
+export default async function DashboardPage() {
   const supabase = await createClient();
-  const { workspaceSlug } = await params;
+  const workspaceId = await getActiveWorkspaceId();
+  if (!workspaceId) redirect("/create-workspace");
 
-  // Get workspace
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id")
-    .eq("slug", workspaceSlug)
-    .single();
-
-  if (!workspace) {
-    return <div>Workspace not found</div>;
-  }
-
-  // Get dashboard statistics
   const { data: stats } = await supabase.rpc("get_dashboard_stats", {
-    p_workspace_id: workspace.id,
+    p_workspace_id: workspaceId,
   });
 
   const statistics = stats || {
@@ -40,65 +27,26 @@ export default async function DashboardPage({
   };
 
   const statCards = [
-    {
-      title: "Today's Sales",
-      value: `$${Number(statistics.today_sales).toFixed(2)}`,
-      icon: DollarSign,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
-    },
-    {
-      title: "Monthly Sales",
-      value: `$${Number(statistics.monthly_sales).toFixed(2)}`,
-      icon: TrendingUp,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100",
-    },
-    {
-      title: "Pending Payments",
-      value: `$${Number(statistics.pending_payments).toFixed(2)}`,
-      icon: AlertCircle,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-    },
-    {
-      title: "Total Products",
-      value: statistics.total_products,
-      icon: Package,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
-    },
-    {
-      title: "Total Customers",
-      value: statistics.total_customers,
-      icon: Users,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-100",
-    },
-    {
-      title: "Low Stock Items",
-      value: statistics.low_stock_count,
-      icon: AlertCircle,
-      color: "text-red-600",
-      bgColor: "bg-red-100",
-    },
+    { title: "Today's Sales", value: `$${Number(statistics.today_sales).toFixed(2)}`, icon: DollarSign, color: "text-green-600", bgColor: "bg-green-100" },
+    { title: "Monthly Sales", value: `$${Number(statistics.monthly_sales).toFixed(2)}`, icon: TrendingUp, color: "text-blue-600", bgColor: "bg-blue-100" },
+    { title: "Pending Payments", value: `$${Number(statistics.pending_payments).toFixed(2)}`, icon: AlertCircle, color: "text-orange-600", bgColor: "bg-orange-100" },
+    { title: "Total Products", value: statistics.total_products, icon: Package, color: "text-purple-600", bgColor: "bg-purple-100" },
+    { title: "Total Customers", value: statistics.total_customers, icon: Users, color: "text-indigo-600", bgColor: "bg-indigo-100" },
+    { title: "Low Stock Items", value: statistics.low_stock_count, icon: AlertCircle, color: "text-red-600", bgColor: "bg-red-100" },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500">Welcome back! Here's your business overview.</p>
+        <p className="text-gray-500">Welcome back! Here&apos;s your business overview.</p>
       </div>
 
-      {/* Statistics Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {statCards.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">{stat.title}</CardTitle>
               <div className={`rounded-full p-2 ${stat.bgColor}`}>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </div>
@@ -110,11 +58,8 @@ export default async function DashboardPage({
         ))}
       </div>
 
-      {/* Quick Actions */}
       <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <button className="flex flex-col items-center gap-2 rounded-lg border p-4 hover:bg-gray-50">
@@ -137,7 +82,6 @@ export default async function DashboardPage({
         </CardContent>
       </Card>
 
-      {/* Welcome Message */}
       {statistics.total_products === 0 && (
         <Card className="border-blue-200 bg-blue-50">
           <CardContent className="pt-6">
@@ -146,12 +90,9 @@ export default async function DashboardPage({
                 <Package className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-semibold text-blue-900">
-                  Welcome to Your Business Management System!
-                </h3>
+                <h3 className="font-semibold text-blue-900">Welcome to Your Business Management System!</h3>
                 <p className="mt-1 text-sm text-blue-700">
-                  Get started by adding your first product. Navigate to Products
-                  in the sidebar to begin managing your inventory.
+                  Get started by adding your first product. Navigate to Products in the sidebar to begin managing your inventory.
                 </p>
               </div>
             </div>
