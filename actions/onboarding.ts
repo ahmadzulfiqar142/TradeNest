@@ -7,7 +7,9 @@ import {
   type CreateWorkspaceFormValues,
 } from "@/schemas/workspace";
 
-export async function createWorkspaceOnboarding(data: CreateWorkspaceFormValues) {
+export async function createWorkspaceOnboarding(
+  data: CreateWorkspaceFormValues,
+) {
   const validatedData = createWorkspaceSchema.parse(data);
   const supabase = await createClient();
 
@@ -51,24 +53,26 @@ export async function createWorkspaceOnboarding(data: CreateWorkspaceFormValues)
   }
 
   // Add user as owner
-  const { error: memberError } = await supabase.from("workspace_members").insert({
-    workspace_id: workspace.id,
-    user_id: user.id,
-    role: "owner",
-  });
+  const { error: memberError } = await supabase
+    .from("workspace_members")
+    .insert({
+      workspace_id: workspace.id,
+      user_id: user.id,
+      role: "owner",
+    });
 
   if (memberError) {
     return { error: memberError.message, success: false };
   }
 
   revalidatePath("/");
-  
-  return { 
-    success: true, 
+
+  return {
+    success: true,
     workspace: {
       id: workspace.id,
       name: workspace.name,
       slug: workspace.slug,
-    }
+    },
   };
 }

@@ -7,23 +7,66 @@ import { loginSchema, type LoginFormValues } from "@/schemas/auth";
 
 export async function login(data: LoginFormValues) {
   const validatedData = loginSchema.parse(data);
-  
+
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { error: signInError } = await supabase.auth.signInWithPassword({
     email: validatedData.email,
     password: validatedData.password,
   });
 
-  if (error) {
-    return { error: error.message };
+  if (signInError) {
+    return { error: signInError.message };
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // === Check workspace membership ===
+  const { data: member, error: memberError } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .single();
+
+  if (memberError && memberError.code !== "PGRST116") {
+    // PGRST116 = no rows returned (expected for new users)
+    console.error("Member check error:", memberError);
+    redirect("/onboarding");
+  }
+
+  if (member?.workspace_id) {
+    const { data: workspace, error: workspaceError } = await supabase
+      .from("workspaces")
+      .select("slug")
+      .eq("id", member.workspace_id)
+      .single();
+
+    if (workspaceError || !workspace?.slug) {
+      console.error("Workspace fetch error:", workspaceError);
+      redirect("/onboarding");
+    }
+
+    redirect(`/${workspace.slug}/dashboard`);
+  }
+
+  // No workspace → go to onboarding (new users)
+  redirect("/onboarding");
 }
 
-export async function signup(email: string, password: string, fullName: string) {
+export async function signup(
+  email: string,
+  password: string,
+  fullName: string,
+) {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({
