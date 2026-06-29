@@ -1,13 +1,22 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/supabase/server";
-import { createWorkspaceSchema, type CreateWorkspaceFormValues } from "@/schemas/workspace";
+import {
+  createWorkspaceSchema,
+  type CreateWorkspaceFormValues,
+} from "@/schemas/workspace";
+import { setActiveWorkspaceId } from "@/lib/workspace-cookie";
 
-export async function createWorkspaceOnboarding(data: CreateWorkspaceFormValues) {
+export async function createWorkspaceOnboarding(
+  data: CreateWorkspaceFormValues,
+) {
   const validatedData = createWorkspaceSchema.parse(data);
 
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) {
     return { error: "Unauthorized", success: false };
@@ -25,7 +34,11 @@ export async function createWorkspaceOnboarding(data: CreateWorkspaceFormValues)
 
   if (existingMember?.workspace_id) {
     await setActiveWorkspaceId(existingMember.workspace_id);
-    return { error: "You already have a workspace", success: false, redirectTo: "/" };
+    return {
+      error: "You already have a workspace",
+      success: false,
+      redirectTo: "/dashboard",
+    };
   }
 
   // Check slug availability
@@ -69,5 +82,7 @@ export async function createWorkspaceOnboarding(data: CreateWorkspaceFormValues)
     return { error: memberError.message, success: false };
   }
 
-  return { success: true };
+  await setActiveWorkspaceId(workspace.id);
+
+  return { success: true, redirectTo: "/" };
 }

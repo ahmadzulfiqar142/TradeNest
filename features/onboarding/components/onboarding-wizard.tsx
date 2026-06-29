@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { OnboardingStepOne } from "./onboarding-step-one";
 import { OnboardingStepTwo } from "./onboarding-step-two";
 import { OnboardingStepThree } from "./onboarding-step-three";
+import type { CreateWorkspaceFormValues } from "@/schemas/workspace";
 
 interface OnboardingWizardProps {
   user: {
@@ -22,7 +23,8 @@ const steps = [
 
 export function OnboardingWizard({ user }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [workspaceData, setWorkspaceData] = useState<any>(null);
+  const [workspaceData, setWorkspaceData] =
+    useState<CreateWorkspaceFormValues | null>(null);
 
   const handleNext = () => {
     setCurrentStep((prev) => Math.min(prev + 1, steps.length));
@@ -32,7 +34,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
     setCurrentStep((prev) => Math.max(prev - 1, 1));
   };
 
-  const handleWorkspaceData = (data: any) => {
+  const handleWorkspaceData = (data: CreateWorkspaceFormValues) => {
     setWorkspaceData(data);
     handleNext();
   };
@@ -50,8 +52,8 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                     currentStep > step.id
                       ? "border-green-600 bg-green-600 text-white"
                       : currentStep === step.id
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-gray-300 bg-white text-gray-400"
+                        ? "border-blue-600 bg-blue-600 text-white"
+                        : "border-gray-300 bg-white text-gray-400"
                   }`}
                 >
                   {currentStep > step.id ? (
@@ -61,7 +63,9 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
                   )}
                 </div>
                 <div className="mt-2 text-center">
-                  <p className="text-sm font-medium text-gray-900">{step.name}</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {step.name}
+                  </p>
                   <p className="text-xs text-gray-500">{step.description}</p>
                 </div>
               </div>

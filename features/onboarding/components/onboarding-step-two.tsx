@@ -3,7 +3,18 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Building2, Globe, MapPin, Phone, Mail, MessageSquare, ArrowRight, ArrowLeft, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  Building2,
+  Globe,
+  MapPin,
+  Phone,
+  Mail,
+  MessageSquare,
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+} from "lucide-react";
 import { createWorkspaceOnboarding } from "@/actions/onboarding";
 import {
   createWorkspaceSchema,
@@ -18,11 +29,15 @@ interface OnboardingStepTwoProps {
     id: string;
     email?: string;
   };
-  onNext: (data: any) => void;
+  onNext: (data: CreateWorkspaceFormValues) => void;
   onBack: () => void;
 }
 
-export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoProps) {
+export function OnboardingStepTwo({
+  user,
+  onNext,
+  onBack,
+}: OnboardingStepTwoProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -96,14 +111,19 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
               <h3 className="text-xl font-bold text-[#0F172A]">
                 Business Details
               </h3>
-              <p className="text-sm text-[#64748B]">Tell us about your business</p>
+              <p className="text-sm text-[#64748B]">
+                Tell us about your business
+              </p>
             </div>
           </div>
 
           <div className="space-y-6">
             {/* Business Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="name"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 Business Name <span className="text-[#EF4444]">*</span>
               </Label>
               <Input
@@ -116,19 +136,26 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
                 className="h-14"
               />
               {errors.name && (
-                <p className="text-sm text-[#EF4444] font-medium">{errors.name.message}</p>
+                <p className="text-sm text-[#EF4444] font-medium">
+                  {errors.name.message}
+                </p>
               )}
             </div>
 
             {/* Workspace URL */}
             <div className="space-y-2">
-              <Label htmlFor="slug" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="slug"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 Workspace URL <span className="text-[#EF4444]">*</span>
               </Label>
               <div className="flex gap-3">
                 <div className="flex items-center gap-2 rounded-xl border border-[#D9D9D9] bg-[#F8FAFC] px-4 h-14 min-w-fit">
                   <Globe className="h-5 w-5 text-[#64748B]" />
-                  <span className="text-sm font-medium text-[#64748B] whitespace-nowrap">yoursite.com/</span>
+                  <span className="text-sm font-medium text-[#64748B] whitespace-nowrap">
+                    yoursite.com/
+                  </span>
                 </div>
                 <Input
                   id="slug"
@@ -140,10 +167,13 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
                 />
               </div>
               {errors.slug && (
-                <p className="text-sm text-[#EF4444] font-medium">{errors.slug.message}</p>
+                <p className="text-sm text-[#EF4444] font-medium">
+                  {errors.slug.message}
+                </p>
               )}
               <p className="text-xs text-[#94A3B8]">
-                Your unique workspace identifier (letters, numbers, hyphens only)
+                Your unique workspace identifier (letters, numbers, hyphens
+                only)
               </p>
             </div>
           </div>
@@ -159,14 +189,19 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
               <h3 className="text-xl font-bold text-[#0F172A]">
                 Contact Information
               </h3>
-              <p className="text-sm text-[#64748B]">Optional - can be added later</p>
+              <p className="text-sm text-[#64748B]">
+                Optional - can be added later
+              </p>
             </div>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Business Address */}
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="businessAddress" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="businessAddress"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 Business Address
               </Label>
               <div className="relative">
@@ -184,7 +219,10 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
 
             {/* Business Phone */}
             <div className="space-y-2">
-              <Label htmlFor="businessPhone" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="businessPhone"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 Phone Number
               </Label>
               <div className="relative">
@@ -202,7 +240,10 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
 
             {/* Business Email */}
             <div className="space-y-2">
-              <Label htmlFor="businessEmail" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="businessEmail"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 Business Email
               </Label>
               <div className="relative">
@@ -220,7 +261,10 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
 
             {/* WhatsApp Number */}
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="businessWhatsapp" className="text-sm font-semibold text-[#0F172A]">
+              <Label
+                htmlFor="businessWhatsapp"
+                className="text-sm font-semibold text-[#0F172A]"
+              >
                 WhatsApp Number
               </Label>
               <div className="relative">
@@ -246,7 +290,9 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
                 <span className="text-xs font-bold text-white">!</span>
               </div>
               <div>
-                <p className="font-semibold text-[#0F172A]">Unable to create workspace</p>
+                <p className="font-semibold text-[#0F172A]">
+                  Unable to create workspace
+                </p>
                 <p className="text-sm text-[#64748B] mt-1">{error}</p>
               </div>
             </div>

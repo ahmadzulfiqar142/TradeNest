@@ -42,7 +42,11 @@ async function getAuthorizedUser(workspaceId: string) {
     .maybeSingle();
 
   if (!member) {
-    return { supabase, user: null, error: "You do not have access to this workspace." };
+    return {
+      supabase,
+      user: null,
+      error: "You do not have access to this workspace.",
+    };
   }
 
   return { supabase, user, error: null };
@@ -201,8 +205,8 @@ export async function updateProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
-  const newImageUrl = formData.get("imageUrl") as string | null;
-  const oldImageUrl = formData.get("oldImageUrl") as string | null;
+  const newImageUrl = formData.get("imageUrl")?.toString() ?? null;
+  const oldImageUrl = formData.get("oldImageUrl")?.toString() ?? null;
 
   // Fetch existing product (including current image)
   const { data: existingProduct, error: existingProductError } = await supabase

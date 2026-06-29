@@ -34,7 +34,10 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   const [uploadMessage, setUploadMessage] = useState("");
 
   const [state, formAction, pending] = useActionState(
-    updateProfile.bind(null, profile.id),
+    async (
+      previousState: { message: string; success: boolean },
+      formData: FormData,
+    ) => updateProfile(profile.id, previousState, formData),
     { message: "", success: false },
   );
 
