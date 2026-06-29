@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CreateProductForm } from "@/features/products/components/create-product-form";
 
 export default async function NewProductPage() {
@@ -19,30 +19,30 @@ export default async function NewProductPage() {
     .order("name", { ascending: true });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Add product</h1>
-          <p className="text-gray-500">Create a product with image, price, stock, and category.</p>
+    <div className="flex flex-col items-center">
+      <div className="w-full max-w-2xl">
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Add product</h1>
+            <p className="text-sm text-gray-500">Create a product with image, price, stock, and category.</p>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/products">
+              <ArrowLeft className="h-4 w-4" />
+              Products
+            </Link>
+          </Button>
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/products">
-            <ArrowLeft className="h-4 w-4" />
-            Products
-          </Link>
-        </Button>
+        <Card>
+          <CardContent className="pt-6">
+            <CreateProductForm
+              workspaceId={workspaceId}
+              workspaceSlug=""
+              categories={categories ?? []}
+            />
+          </CardContent>
+        </Card>
       </div>
-
-      <Card className="max-w-3xl">
-        <CardHeader><CardTitle className="text-xl">Product details</CardTitle></CardHeader>
-        <CardContent>
-          <CreateProductForm
-            workspaceId={workspaceId}
-            workspaceSlug=""
-            categories={categories ?? []}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }

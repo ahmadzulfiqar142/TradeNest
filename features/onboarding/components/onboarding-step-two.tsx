@@ -56,16 +56,13 @@ export function OnboardingStepTwo({ user, onNext, onBack }: OnboardingStepTwoPro
     try {
       const result = await createWorkspaceOnboarding(data);
       if (result?.error) {
-        if (result.redirectTo) {
-          window.location.href = result.redirectTo;
-          return;
-        }
         setError(result.error);
         setIsLoading(false);
-      } else if (result?.success && result?.redirectTo) {
-        window.location.href = result.redirectTo;
+      } else if (result?.success) {
+        onNext(data);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
       setError("An unexpected error occurred");
       setIsLoading(false);
     }

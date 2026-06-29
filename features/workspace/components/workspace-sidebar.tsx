@@ -28,7 +28,7 @@ interface WorkspaceSidebarProps {
 }
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
   { name: "Inventory", href: "/inventory", icon: Warehouse },
   { name: "Customers", href: "/customers", icon: Users },
@@ -48,7 +48,7 @@ export function WorkspaceSidebar({ workspace, userRole }: WorkspaceSidebarProps)
     <div className="flex w-64 flex-col border-r bg-white">
       {/* Workspace Logo/Name */}
       <div className="flex h-16 items-center border-b px-6">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           {workspace.logo_url ? (
             <img
               src={workspace.logo_url}

@@ -73,6 +73,21 @@ CREATE POLICY "Owners and admins can manage workspace members"
             AND wm.user_id = auth.uid()
             AND wm.role IN ('owner', 'admin')
         )
+    )
+    WITH CHECK (
+        -- Allow inserting yourself as owner into a new workspace (no members yet)
+        (role = 'owner' AND user_id = auth.uid() AND NOT EXISTS (
+            SELECT 1 FROM workspace_members AS wm
+            WHERE wm.workspace_id = workspace_members.workspace_id
+        ))
+        OR
+        -- Allow owners/admins to add members to existing workspaces
+        EXISTS (
+            SELECT 1 FROM workspace_members AS wm
+            WHERE wm.workspace_id = workspace_members.workspace_id
+            AND wm.user_id = auth.uid()
+            AND wm.role IN ('owner', 'admin')
+        )
     );
 
 -- Helper function to check workspace access

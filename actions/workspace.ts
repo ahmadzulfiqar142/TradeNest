@@ -75,7 +75,7 @@ export async function createWorkspace(data: CreateWorkspaceFormValues) {
     path: "/",
   });
 
-  redirect("/dashboard");
+  redirect("/");
 }
 
 export async function updateWorkspace(

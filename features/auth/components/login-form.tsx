@@ -31,7 +31,8 @@ export function LoginForm() {
       if (result?.error) {
         setError(result.error);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
       setError("An unexpected error occurred");
     } finally {
       setIsLoading(false);

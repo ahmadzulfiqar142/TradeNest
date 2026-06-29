@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types";
 import { WORKSPACE_COOKIE } from "@/lib/workspace-cookie";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
-const WORKSPACE_PATHS = ["/dashboard", "/products", "/inventory", "/customers", "/suppliers", "/sales", "/purchases", "/expenses", "/reports", "/settings"];
+const WORKSPACE_PATHS = ["/products", "/inventory", "/customers", "/suppliers", "/sales", "/purchases", "/expenses", "/reports", "/settings"];
 
 function createAdminClient() {
   return createSupabaseClient<Database>(
@@ -41,6 +41,7 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isWorkspacePath = pathname === "/" || WORKSPACE_PATHS.some((p) => pathname.startsWith(p));
 
   // Not logged in — send to login
   if (!user && !isPublic && pathname !== "/onboarding") {
@@ -50,13 +51,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user) {
-    const isWorkspacePath = WORKSPACE_PATHS.some((p) => pathname.startsWith(p));
     const hasWorkspaceCookie = request.cookies.has(WORKSPACE_COOKIE);
 
     // Logged-in user on auth pages — send to dashboard or onboarding
     if (isPublic) {
       const url = request.nextUrl.clone();
-      url.pathname = hasWorkspaceCookie ? "/dashboard" : "/onboarding";
+      url.pathname = hasWorkspaceCookie ? "/" : "/onboarding";
       return NextResponse.redirect(url);
     }
 
@@ -84,12 +84,6 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // Logged-in user on /onboarding — if they have a workspace, send to dashboard
-    if (pathname === "/onboarding" && hasWorkspaceCookie) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
   }
 
   return supabaseResponse;

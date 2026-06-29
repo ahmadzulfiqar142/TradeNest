@@ -154,7 +154,7 @@ export async function createProduct(
   }
 
   revalidatePath("/products");
-  revalidatePath("/dashboard");
+  revalidatePath("/");
 
   if (inventoryHistoryWarning) {
     return {
@@ -306,7 +306,7 @@ export async function updateProduct(
 
   revalidatePath("/products");
   revalidatePath(`/products/${productId}/edit`);
-  revalidatePath("/dashboard");
+  revalidatePath("/");
 
   if (inventoryHistoryWarning) {
     return {

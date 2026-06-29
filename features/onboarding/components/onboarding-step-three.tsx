@@ -5,24 +5,16 @@ import { Button } from "@/components/ui/button";
 
 interface OnboardingStepThreeProps {
   workspaceData: {
-    workspace?: {
-      name: string;
-      slug: string;
-    };
-    success: boolean;
+    name?: string;
+    slug?: string;
   } | null;
 }
 
 export function OnboardingStepThree({ workspaceData }: OnboardingStepThreeProps) {
-  const workspaceName = workspaceData?.workspace?.name || "Your Workspace";
-  const workspaceSlug = workspaceData?.workspace?.slug || "";
+  const workspaceName = workspaceData?.name || "Your Workspace";
 
   const handleGoToDashboard = () => {
-    if (workspaceSlug) {
-      window.location.href = `/${workspaceSlug}/dashboard`;
-    } else {
-      window.location.href = "/";
-    }
+    window.location.href = "/";
   };
 
   return (
@@ -35,7 +27,7 @@ export function OnboardingStepThree({ workspaceData }: OnboardingStepThreeProps)
           🎉 Congratulations!
         </h2>
         <p className="mt-2 text-lg text-gray-600">
-          <span className="font-semibold text-green-600">{workspaceName}</span> is ready to use
+          Your workspace is ready to use
         </p>
       </div>
 
@@ -80,15 +72,7 @@ export function OnboardingStepThree({ workspaceData }: OnboardingStepThreeProps)
             Access your dashboard to view sales, manage products, track inventory, 
             and generate reports. Everything you need to run your business efficiently.
           </p>
-          
-          {workspaceSlug && (
-            <div className="mt-4 rounded-lg bg-white/50 p-3">
-              <p className="text-xs text-blue-700">Your workspace URL:</p>
-              <p className="font-mono text-sm font-medium text-blue-900">
-                /{workspaceSlug}
-              </p>
-            </div>
-          )}
+
         </div>
       </div>
 

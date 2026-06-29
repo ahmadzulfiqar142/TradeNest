@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
-import { setActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wizard";
 
 export default async function OnboardingPage() {
@@ -17,10 +16,7 @@ export default async function OnboardingPage() {
     .limit(1)
     .maybeSingle();
 
-  if (member?.workspace_id) {
-    await setActiveWorkspaceId(member.workspace_id);
-    redirect("/dashboard");
-  }
+  if (member?.workspace_id) redirect("/");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">

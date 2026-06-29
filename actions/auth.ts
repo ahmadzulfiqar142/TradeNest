@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { loginSchema, type LoginFormValues } from "@/schemas/auth";
-import { setActiveWorkspaceId, clearActiveWorkspaceId } from "@/lib/workspace-cookie";
+import {
+  setActiveWorkspaceId,
+  clearActiveWorkspaceId,
+} from "@/lib/workspace-cookie";
 
 export async function login(data: LoginFormValues) {
   const validatedData = loginSchema.parse(data);
@@ -19,7 +22,9 @@ export async function login(data: LoginFormValues) {
     return { error: signInError.message };
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const admin = createAdminClient();
@@ -34,13 +39,17 @@ export async function login(data: LoginFormValues) {
 
   if (member?.workspace_id) {
     await setActiveWorkspaceId(member.workspace_id);
-    redirect("/dashboard");
+    redirect("/");
   }
 
   redirect("/onboarding");
 }
 
-export async function signup(email: string, password: string, fullName: string) {
+export async function signup(
+  email: string,
+  password: string,
+  fullName: string,
+) {
   const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({

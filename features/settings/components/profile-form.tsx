@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, User } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
+import { Loader2, Upload, User, X } from "lucide-react";
 import { updateProfile } from "@/actions/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { createClient } from "@/supabase/client";
 
 interface ProfileFormProps {
   profile: {
@@ -17,41 +24,133 @@ interface ProfileFormProps {
   };
 }
 
+const AVATAR_BUCKET = "avatars"; // ← Change if your bucket name is different
+
 export function ProfileForm({ profile }: ProfileFormProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<{ text: string; success: boolean } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setMessage(null);
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState("");
 
-    const formData = new FormData(e.currentTarget);
-    const result = await updateProfile(formData);
+  const [state, formAction, pending] = useActionState(
+    updateProfile.bind(null, profile.id),
+    { message: "", success: false },
+  );
 
-    setMessage(
-      result.error
-        ? { text: result.error, success: false }
-        : { text: "Profile updated successfully.", success: true }
-    );
-    setIsLoading(false);
+  async function handleAvatarUpload(file: File) {
+    if (!file.type.startsWith("image/")) {
+      setUploadMessage("Please select an image file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadMessage("Image must be smaller than 5MB.");
+      return;
+    }
+
+    setUploading(true);
+    setUploadMessage("");
+
+    const supabase = createClient();
+    const fileExtension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const filePath = `${profile.id}/${Date.now()}-${crypto.randomUUID()}.${fileExtension}`;
+
+    const { error } = await supabase.storage
+      .from(AVATAR_BUCKET)
+      .upload(filePath, file, { cacheControl: "3600", upsert: true });
+
+    if (error) {
+      setUploadMessage(error.message);
+      setUploading(false);
+      return;
+    }
+
+    const { data } = supabase.storage
+      .from(AVATAR_BUCKET)
+      .getPublicUrl(filePath);
+
+    setAvatarUrl(data.publicUrl);
+    setUploadMessage("Avatar uploaded successfully.");
+    setUploading(false);
+  }
+
+  const removeAvatar = () => {
+    setAvatarUrl("");
+    setUploadMessage("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
     <Card className="max-w-2xl">
-      <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-            <User className="h-5 w-5 text-blue-600" />
+      <form action={formAction} className="space-y-6">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="space-y-3">
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="relative group cursor-pointer"
+              >
+                <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 hover:ring-2 hover:ring-blue-500 transition-all">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                      <User className="h-14 w-14 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 rounded-full transition-all">
+                  <div className="text-white text-xs font-medium flex flex-col items-center">
+                    <Upload className="h-5 w-5 mb-1" />
+                    Change
+                  </div>
+                </div>
+
+                {/* Remove button */}
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAvatarUpload(file);
+                }}
+              />
+            </div>
+
+            <div>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>
+                Update your personal information and avatar.
+              </CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle>Profile</CardTitle>
-            <CardDescription>Update your personal information.</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-5">
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <input type="hidden" name="avatar_url" value={avatarUrl} />
+
+          {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="full_name">Full Name</Label>
             <Input
@@ -59,10 +158,11 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               name="full_name"
               defaultValue={profile.full_name ?? ""}
               placeholder="John Doe"
-              disabled={isLoading}
+              disabled={pending}
             />
           </div>
 
+          {/* Email */}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -71,21 +171,30 @@ export function ProfileForm({ profile }: ProfileFormProps) {
               disabled
               className="bg-gray-50 text-gray-500"
             />
-            <p className="text-xs text-gray-400">Email cannot be changed here.</p>
           </div>
 
-          {message && (
-            <div className={`rounded-lg border p-3 text-sm font-medium ${message.success ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}>
-              {message.text}
-            </div>
+          {uploadMessage && (
+            <p className="text-sm text-gray-600" aria-live="polite">
+              {uploadMessage}
+            </p>
           )}
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {state.message && (
+            <p
+              className={`text-sm font-medium ${
+                state.success ? "text-green-700" : "text-red-600"
+              }`}
+            >
+              {state.message}
+            </p>
+          )}
+
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>
-        </form>
-      </CardContent>
+        </CardContent>
+      </form>
     </Card>
   );
 }
