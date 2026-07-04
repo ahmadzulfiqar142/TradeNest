@@ -17,8 +17,10 @@ import {
   ArrowLeft,
   ArrowRight,
   Sparkles,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
-import { createWorkspaceOnboarding } from "@/actions/onboarding";
+import { checkSlugAvailability } from "@/actions/onboarding";
 import {
   createWorkspaceSchema,
   type CreateWorkspaceFormValues,
@@ -46,7 +48,8 @@ export function OnboardingStepTwo({
   onTriggerSubmit,
 }: OnboardingStepTwoProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     register,
@@ -88,17 +91,27 @@ export function OnboardingStepTwo({
       .replace(/^-+|-+$/g, "");
   };
 
+  const checkSlug = (slug: string) => {
+    if (!slug || slug.length < 2) { setSlugStatus("idle"); return; }
+    setSlugStatus("checking");
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const { available } = await checkSlugAvailability(slug);
+      setSlugStatus(available ? "available" : "taken");
+    }, 400);
+  };
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const name = e.target.value;
     setValue("name", name);
-    setValue("slug", generateSlug(name));
+    const slug = generateSlug(name);
+    setValue("slug", slug);
+    checkSlug(slug);
   };
 
   const onSubmit = async (data: { name: string; slug: string }) => {
-    setIsLoading(true);
-
-    // Pass the data to parent - workspace will be created in step 3
-    onNext({ name: data.name, slug: data.slug } as CreateWorkspaceFormValues);
+    if (slugStatus === "taken" || slugStatus === "checking") return;
+    onNext(data as CreateWorkspaceFormValues);
   };
 
   // Handle Next button click from parent
@@ -106,6 +119,7 @@ export function OnboardingStepTwo({
     // Validate the form first
     const isValid = await trigger();
     if (isValid) {
+      if (slugStatus === "taken" || slugStatus === "checking") return;
       // Get the form data
       const data = watch();
       // Call onSubmit with the data
@@ -151,12 +165,21 @@ export function OnboardingStepTwo({
                 placeholder="e.g., Green Valley Store"
                 {...register("name")}
                 onChange={handleNameChange}
-                disabled={isLoading}
                 className="h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
               />
               {errors.name && (
                 <p className="text-sm text-[#EF4444] font-medium">
                   {errors.name.message}
+                </p>
+              )}
+              {slugStatus === "taken" && (
+                <p className="text-sm text-red-500 font-medium flex items-center gap-1.5">
+                  <XCircle className="h-4 w-4" /> A workspace with that name already exists.
+                </p>
+              )}
+              {slugStatus === "available" && (
+                <p className="text-sm text-green-600 font-medium flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" /> This workspace name is available.
                 </p>
               )}
             </div>
@@ -181,7 +204,6 @@ export function OnboardingStepTwo({
                   type="text"
                   placeholder="green-valley"
                   {...register("slug")}
-                  disabled={isLoading}
                   className="flex-1 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
                 />
               </div>

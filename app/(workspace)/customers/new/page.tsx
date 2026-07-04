@@ -4,46 +4,33 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { Button } from "@/components/ui/button";
-import { CreateProductForm } from "@/features/products/components/create-product-form";
+import { CreateCustomerForm } from "@/features/customers/components/create-customer-form";
 
-export default async function NewProductPage() {
+export default async function NewCustomerPage() {
   const supabase = await createClient();
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) redirect("/create-workspace");
-
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name")
-    .eq("workspace_id", workspaceId)
-    .order("name", { ascending: true });
 
   return (
     <div className="flex flex-col items-center">
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-100">Add product</h1>
+            <h1 className="text-2xl font-bold text-gray-100">Add customer</h1>
             <p className="text-sm text-gray-400">
-              Create a product with image, price, stock, and category.
+              Create a new customer with contact details and balance
+              information.
             </p>
           </div>
-          <Button
-            variant="outline"
-            asChild
-            className="border-gray-700 text-gray-300 hover:bg-gray-800"
-          >
-            <Link href="/products">
+          <Button variant="dark-outline" asChild>
+            <Link href="/customers">
               <ArrowLeft className="h-4 w-4" />
-              Products
+              Customers
             </Link>
           </Button>
         </div>
         <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-          <CreateProductForm
-            workspaceId={workspaceId}
-            workspaceSlug=""
-            categories={categories ?? []}
-          />
+          <CreateCustomerForm workspaceId={workspaceId} />
         </div>
       </div>
     </div>

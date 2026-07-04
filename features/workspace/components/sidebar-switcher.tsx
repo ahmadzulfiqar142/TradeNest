@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
+import { Sidebar } from "@/features/workspace/components/workspace-sidebar";
 import { SettingsSidebar } from "@/features/settings/components/settings-sidebar";
 
 interface SidebarSwitcherProps {
@@ -22,5 +22,5 @@ export function SidebarSwitcher({ workspace, userRole }: SidebarSwitcherProps) {
     return <SettingsSidebar />;
   }
 
-  return <WorkspaceSidebar workspace={workspace} userRole={userRole} />;
+  return <Sidebar />;
 }

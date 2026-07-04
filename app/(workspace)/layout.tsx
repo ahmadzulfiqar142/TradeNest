@@ -1,8 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
-import { SidebarSwitcher } from "@/features/workspace/components/sidebar-switcher";
-import { WorkspaceHeader } from "@/features/workspace/components/workspace-header";
+import { WorkspaceLayoutClient } from "@/features/workspace/components/workspace-layout-client";
 
 export default async function WorkspaceLayout({
   children,
@@ -10,7 +9,10 @@ export default async function WorkspaceLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) redirect("/login");
 
@@ -37,14 +39,12 @@ export default async function WorkspaceLayout({
   if (!member) redirect("/onboarding");
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <SidebarSwitcher workspace={workspace} userRole={member.role} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <WorkspaceHeader workspace={workspace} user={user} />
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
-          {children}
-        </main>
-      </div>
-    </div>
+    <WorkspaceLayoutClient
+      workspace={workspace}
+      userRole={member.role}
+      user={user}
+    >
+      {children}
+    </WorkspaceLayoutClient>
   );
 }
