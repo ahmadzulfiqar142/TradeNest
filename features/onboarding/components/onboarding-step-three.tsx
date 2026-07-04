@@ -1,95 +1,245 @@
 "use client";
 
-import { CheckCircle2, Sparkles, ArrowRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Loader2,
+  MapPin,
+  Phone,
+  Mail,
+  MessageSquare,
+  ArrowLeft,
+  ArrowRight,
+} from "lucide-react";
+import { createWorkspaceOnboarding } from "@/actions/onboarding";
+import {
+  createWorkspaceSchema,
+  type CreateWorkspaceFormValues,
+} from "@/schemas/workspace";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface OnboardingStepThreeProps {
-  workspaceData: {
-    name?: string;
-    slug?: string;
-  } | null;
+  user: {
+    id: string;
+    email?: string;
+  };
+  workspaceData: Partial<CreateWorkspaceFormValues>;
+  onNext: (data: CreateWorkspaceFormValues) => void;
+  onBack: () => void;
+  onTriggerSubmit?: (fn: () => void) => void;
 }
 
-export function OnboardingStepThree({ workspaceData }: OnboardingStepThreeProps) {
-  const workspaceName = workspaceData?.name || "Your Workspace";
+export function OnboardingStepThree({
+  user,
+  workspaceData,
+  onNext,
+  onBack,
+  onTriggerSubmit,
+}: OnboardingStepThreeProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoToDashboard = () => {
-    window.location.href = "/";
+  const {
+    register,
+    handleSubmit,
+    watch,
+    trigger,
+    formState: { errors },
+  } = useForm<CreateWorkspaceFormValues>({
+    resolver: zodResolver(createWorkspaceSchema),
+    defaultValues: {
+      name: workspaceData.name || "",
+      slug: workspaceData.slug || "",
+      businessAddress: workspaceData.businessAddress || "",
+      businessPhone: workspaceData.businessPhone || "",
+      businessEmail: workspaceData.businessEmail || "",
+      businessWhatsapp: workspaceData.businessWhatsapp || "",
+    },
+  });
+
+  const onSubmit = async (data: CreateWorkspaceFormValues) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await createWorkspaceOnboarding(data);
+      if (result?.error) {
+        setError(result.error);
+        setIsLoading(false);
+      } else if (result?.success) {
+        onNext(data);
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
+      setError("An unexpected error occurred");
+      setIsLoading(false);
+    }
   };
 
+  // Handle Next button click from parent
+  const handleNextClick = async () => {
+    // Validate the form first
+    const isValid = await trigger();
+    if (isValid) {
+      // Get the form data
+      const data = watch();
+      // Call onSubmit with the data
+      await onSubmit(data);
+    }
+  };
+
+  // Expose handleNextClick to parent
+  useEffect(() => {
+    if (onTriggerSubmit) {
+      onTriggerSubmit(handleNextClick);
+    }
+  }, [onTriggerSubmit, handleNextClick]);
+
+  // Merge workspace data with contact info
+  const mergedData = {
+    ...workspaceData,
+    ...{
+      businessAddress: workspaceData.businessAddress || "",
+      businessPhone: workspaceData.businessPhone || "",
+      businessEmail: workspaceData.businessEmail || "",
+      businessWhatsapp: workspaceData.businessWhatsapp || "",
+    },
+  } as CreateWorkspaceFormValues;
+
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-green-600 shadow-xl shadow-green-500/50">
-          <CheckCircle2 className="h-10 w-10 text-white" />
+    <div className="mx-auto max-w-3xl space-y-10">
+      {/* Header */}
+      <div className="text-center space-y-4">
+        <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] shadow-lg shadow-[#2563EB]/30">
+          <Phone className="h-8 w-8 text-white" />
         </div>
-        <h2 className="text-3xl font-bold text-gray-900">
-          🎉 Congratulations!
-        </h2>
-        <p className="mt-2 text-lg text-gray-600">
-          Your workspace is ready to use
-        </p>
       </div>
 
-      <div className="mx-auto max-w-lg space-y-4">
-        {/* Success Cards */}
-        <div className="rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
-              <Sparkles className="h-6 w-6 text-green-600" />
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        {/* Hidden fields to preserve workspace data from step 2 */}
+        <input type="hidden" {...register("name")} />
+        <input type="hidden" {...register("slug")} />
+        {/* Contact Information Card */}
+        <div className="rounded-2xl border border-slate-700 bg-slate-800/50 p-8 shadow-sm space-y-8">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7]">
+              <Phone className="h-6 w-6 text-[#22C55E]" />
             </div>
             <div>
-              <h3 className="font-semibold text-green-900">
-                What's Next?
+              <h3 className="text-xl font-bold text-white">
+                Business Contact Details
               </h3>
-              <ul className="mt-3 space-y-2 text-sm text-green-800">
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                  Add your first product to the catalog
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                  Create customer profiles
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                  Start recording sales and managing inventory
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-600" />
-                  Invite team members to collaborate
-                </li>
-              </ul>
+              <p className="text-sm text-slate-400">Help customers reach you</p>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Business Address */}
+            <div className="space-y-2 md:col-span-2">
+              <Label
+                htmlFor="businessAddress"
+                className="text-sm font-semibold text-slate-200"
+              >
+                Business Address
+              </Label>
+              <div className="relative">
+                <MapPin className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <Input
+                  id="businessAddress"
+                  type="text"
+                  placeholder="123 Main St, City, State 12345"
+                  {...register("businessAddress")}
+                  disabled={isLoading}
+                  className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* Business Phone */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="businessPhone"
+                className="text-sm font-semibold text-slate-200"
+              >
+                Phone Number
+              </Label>
+              <div className="relative">
+                <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <Input
+                  id="businessPhone"
+                  type="tel"
+                  placeholder="+1 (555) 000-0000"
+                  {...register("businessPhone")}
+                  disabled={isLoading}
+                  className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* Business Email */}
+            <div className="space-y-2">
+              <Label
+                htmlFor="businessEmail"
+                className="text-sm font-semibold text-slate-200"
+              >
+                Business Email
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <Input
+                  id="businessEmail"
+                  type="email"
+                  placeholder="contact@business.com"
+                  {...register("businessEmail")}
+                  disabled={isLoading}
+                  className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
+                />
+              </div>
+            </div>
+
+            {/* WhatsApp Number */}
+            <div className="space-y-2 md:col-span-2">
+              <Label
+                htmlFor="businessWhatsapp"
+                className="text-sm font-semibold text-slate-200"
+              >
+                WhatsApp Number
+              </Label>
+              <div className="relative">
+                <MessageSquare className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                <Input
+                  id="businessWhatsapp"
+                  type="tel"
+                  placeholder="+1 (555) 000-0000"
+                  {...register("businessWhatsapp")}
+                  disabled={isLoading}
+                  className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-6 shadow-sm">
-          <h3 className="font-semibold text-blue-900">
-            Your Dashboard is Ready
-          </h3>
-          <p className="mt-2 text-sm text-blue-800">
-            Access your dashboard to view sales, manage products, track inventory, 
-            and generate reports. Everything you need to run your business efficiently.
-          </p>
-
-        </div>
-      </div>
-
-      <div className="flex justify-center pt-6">
-        <Button
-          size="lg"
-          onClick={handleGoToDashboard}
-          className="h-14 bg-gradient-to-r from-blue-600 to-indigo-600 px-10 text-base font-semibold shadow-xl shadow-blue-500/50 hover:from-blue-700 hover:to-indigo-700"
-        >
-          Go to Dashboard
-          <ArrowRight className="ml-2 h-5 w-5" />
-        </Button>
-      </div>
-
-      <p className="text-center text-xs text-gray-500">
-        You can always access your workspace from the top navigation
-      </p>
+        {/* Error Message */}
+        {error && (
+          <div className="rounded-xl border border-[#FEE2E2] bg-[#FEF2F2] p-5">
+            <div className="flex gap-3">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#EF4444]">
+                <span className="text-xs font-bold text-white">!</span>
+              </div>
+              <div>
+                <p className="font-semibold text-[#0F172A]">
+                  Unable to create workspace
+                </p>
+                <p className="text-sm text-[#64748B] mt-1">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </form>
     </div>
   );
 }

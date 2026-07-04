@@ -4,7 +4,10 @@ import { OnboardingWizard } from "@/features/onboarding/components/onboarding-wi
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError || !user) redirect("/login");
 
@@ -19,8 +22,8 @@ export default async function OnboardingPage() {
   if (member?.workspace_id) redirect("/");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-16">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4">
+      <div className="w-full max-w-4xl">
         <OnboardingWizard user={user} />
       </div>
     </div>
