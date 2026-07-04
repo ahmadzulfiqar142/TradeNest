@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { createClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { Button } from "@/components/ui/button";
 import { CreateCustomerForm } from "@/features/customers/components/create-customer-form";
 
 export default async function NewCustomerPage() {
-  const supabase = await createClient();
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) redirect("/create-workspace");
 

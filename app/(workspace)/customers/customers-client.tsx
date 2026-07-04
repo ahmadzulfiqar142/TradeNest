@@ -5,8 +5,6 @@ import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreateCustomerForm } from "@/features/customers/components/create-customer-form";
 
 interface Customer {
   id: string;
@@ -32,8 +30,6 @@ interface CustomersClientProps {
 }
 
 export default function CustomersClient({ customers }: CustomersClientProps) {
-  const [activeTab, setActiveTab] = useState<"table" | "form">("table");
-
   const columns = [
     {
       key: "name" as const,
@@ -136,43 +132,40 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
         </Button>
       </div>
 
-      {/* Customers Table Tab */}
-      {activeTab === "table" && (
-        <div className="rounded-lg border border-gray-700 bg-gray-800">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Customers List
-            </h2>
-            {customers.length === 0 ? (
-              <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
-                <div className="rounded-full bg-gray-700 p-3">
-                  <Plus className="h-6 w-6 text-gray-400" />
-                </div>
-                <h2 className="mt-4 text-lg font-semibold text-gray-200">
-                  No customers yet
-                </h2>
-                <p className="mt-1 max-w-sm text-sm text-gray-400">
-                  Add your first customer to start managing relationships and
-                  tracking balances.
-                </p>
-                <Button className="mt-5" asChild>
-                  <Link href="/customers/new">
-                    <Plus className="h-4 w-4" />
-                    Add customer
-                  </Link>
-                </Button>
+      <div className="rounded-lg border border-gray-700 bg-gray-800">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-100 mb-4">
+            Customers List
+          </h2>
+          {customers.length === 0 ? (
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
+              <div className="rounded-full bg-gray-700 p-3">
+                <Plus className="h-6 w-6 text-gray-400" />
               </div>
-            ) : (
-              <DataTable
-                data={customers}
-                columns={columns}
-                title=""
-                searchPlaceholder="Search customers..."
-              />
-            )}
-          </div>
+              <h2 className="mt-4 text-lg font-semibold text-gray-200">
+                No customers yet
+              </h2>
+              <p className="mt-1 max-w-sm text-sm text-gray-400">
+                Add your first customer to start managing relationships and
+                tracking balances.
+              </p>
+              <Button className="mt-5" asChild>
+                <Link href="/customers/new">
+                  <Plus className="h-4 w-4" />
+                  Add customer
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              data={customers}
+              columns={columns}
+              title=""
+              searchPlaceholder="Search customers..."
+            />
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

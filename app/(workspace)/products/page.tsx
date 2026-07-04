@@ -1,19 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  AlertTriangle,
-  Boxes,
-  DollarSign,
-  ImageIcon,
-  Package,
-  Pencil,
-  Plus,
-  Tags,
-} from "lucide-react";
 import ProductsClient from "./products-client";
 
 export default async function ProductsPage() {

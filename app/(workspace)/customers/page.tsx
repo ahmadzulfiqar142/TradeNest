@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/supabase/server";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
-import { Button } from "@/components/ui/button";
 import CustomersClient from "./customers-client";
 
 export default async function CustomersPage() {
