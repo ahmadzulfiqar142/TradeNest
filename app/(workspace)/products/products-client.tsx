@@ -1,16 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
-import { TopicList } from "@/components/forum/TopicList";
-import { CreateTopicModal } from "@/components/forum/CreateTopicModal";
-import { ProductForm } from "@/components/forms/ProductForm";
-import { getTopicsByProduct } from "@/lib/forum-data";
-import { Plus, Pencil, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, Boxes, DollarSign, Package, Tags } from "lucide-react";
+import { Plus, ImageIcon, Boxes } from "lucide-react";
 
 interface Product {
   id: string;
@@ -40,16 +33,7 @@ interface ProductsClientProps {
 export default function ProductsClient({
   products,
   categoryNames,
-  stats,
 }: ProductsClientProps) {
-  const [activeTab, setActiveTab] = useState<"table" | "form" | "forum">(
-    "table",
-  );
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProductId, setSelectedProductId] = useState<string>("1");
-
-  const productForumTopics = getTopicsByProduct(selectedProductId);
-
   const columns = [
     {
       key: "name" as const,
@@ -140,43 +124,40 @@ export default function ProductsClient({
         </Button>
       </div>
 
-      {/* Products Table Tab */}
-      {activeTab === "table" && (
-        <div className="rounded-lg border border-gray-700 bg-gray-800">
-          <div className="p-6">
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Products List
-            </h2>
-            {products.length === 0 ? (
-              <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
-                <div className="rounded-full bg-gray-700 p-3">
-                  <Boxes className="h-6 w-6 text-gray-400" />
-                </div>
-                <h2 className="mt-4 text-lg font-semibold text-gray-200">
-                  No products yet
-                </h2>
-                <p className="mt-1 max-w-sm text-sm text-gray-400">
-                  Add your first product with opening stock to start building
-                  inventory history.
-                </p>
-                <Button className="mt-5" asChild>
-                  <Link href="/products/new">
-                    <Plus className="h-4 w-4" />
-                    Add product
-                  </Link>
-                </Button>
+      <div className="rounded-lg border border-gray-700 bg-gray-800">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-gray-100 mb-4">
+            Products List
+          </h2>
+          {products.length === 0 ? (
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
+              <div className="rounded-full bg-gray-700 p-3">
+                <Boxes className="h-6 w-6 text-gray-400" />
               </div>
-            ) : (
-              <DataTable
-                data={products}
-                columns={columns}
-                title=""
-                searchPlaceholder="Search products..."
-              />
-            )}
-          </div>
+              <h2 className="mt-4 text-lg font-semibold text-gray-200">
+                No products yet
+              </h2>
+              <p className="mt-1 max-w-sm text-sm text-gray-400">
+                Add your first product with opening stock to start building
+                inventory history.
+              </p>
+              <Button className="mt-5" asChild>
+                <Link href="/products/new">
+                  <Plus className="h-4 w-4" />
+                  Add product
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <DataTable
+              data={products}
+              columns={columns}
+              title=""
+              searchPlaceholder="Search products..."
+            />
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
