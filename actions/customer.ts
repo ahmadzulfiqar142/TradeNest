@@ -45,24 +45,13 @@ export async function createCustomer(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  const firstName = formData.get("firstName")?.toString() || "";
-  const lastName = formData.get("lastName")?.toString() || "";
-  const fullName = `${firstName} ${lastName}`.trim();
-
   const parsed = createCustomerSchema.safeParse({
-    name: fullName,
-    email: formData.get("email"),
-    phone: formData.get("phone"),
-    whatsapp: formData.get("whatsapp"),
-    address: formData.get("address"),
-    city: formData.get("city"),
-    state: formData.get("state"),
-    country: formData.get("country"),
-    idNumber: formData.get("idNumber"),
-    creditLimit: formData.get("creditLimit"),
-    openingBalance: formData.get("openingBalance"),
-    notes: formData.get("notes"),
-    isActive: formData.get("isActive"),
+    firstName: formData.get("firstName")?.toString() || "",
+    lastName: formData.get("lastName")?.toString() || "",
+    phone: formData.get("phone")?.toString() || "",
+    address: formData.get("address")?.toString(),
+    city: formData.get("city")?.toString(),
+    notes: formData.get("notes")?.toString(),
   });
 
   if (!parsed.success) {
@@ -84,22 +73,13 @@ export async function createCustomer(
 
   const { error: customerError } = await supabase.from("customers").insert({
     workspace_id: workspaceId,
-    name: values.name,
-    email: values.email,
+    first_name: values.firstName,
+    last_name: values.lastName,
     phone: values.phone,
-    whatsapp: values.whatsapp,
     address: values.address,
     city: values.city,
-    state: values.state,
-    country: values.country,
-    id_number: values.idNumber,
-    credit_limit: values.creditLimit,
-    opening_balance: values.openingBalance,
-    current_balance: values.openingBalance,
     notes: values.notes,
-    is_active: values.isActive,
-    created_by: user.id,
-    updated_by: user.id,
+    status: "Active",
   });
 
   if (customerError) {
@@ -118,24 +98,13 @@ export async function updateCustomer(
   _previousState: CustomerActionState,
   formData: FormData,
 ): Promise<CustomerActionState> {
-  const firstName = formData.get("firstName")?.toString() || "";
-  const lastName = formData.get("lastName")?.toString() || "";
-  const fullName = `${firstName} ${lastName}`.trim();
-
   const parsed = createCustomerSchema.safeParse({
-    name: fullName,
-    email: formData.get("email"),
-    phone: formData.get("phone"),
-    whatsapp: formData.get("whatsapp"),
-    address: formData.get("address"),
-    city: formData.get("city"),
-    state: formData.get("state"),
-    country: formData.get("country"),
-    idNumber: formData.get("idNumber"),
-    creditLimit: formData.get("creditLimit"),
-    openingBalance: formData.get("openingBalance"),
-    notes: formData.get("notes"),
-    isActive: formData.get("isActive"),
+    firstName: formData.get("firstName")?.toString() || "",
+    lastName: formData.get("lastName")?.toString() || "",
+    phone: formData.get("phone")?.toString() || "",
+    address: formData.get("address")?.toString(),
+    city: formData.get("city")?.toString(),
+    notes: formData.get("notes")?.toString(),
   });
 
   if (!parsed.success) {
@@ -158,20 +127,12 @@ export async function updateCustomer(
   const { error: customerError } = await supabase
     .from("customers")
     .update({
-      name: values.name,
-      email: values.email,
+      first_name: values.firstName,
+      last_name: values.lastName,
       phone: values.phone,
-      whatsapp: values.whatsapp,
       address: values.address,
       city: values.city,
-      state: values.state,
-      country: values.country,
-      id_number: values.idNumber,
-      credit_limit: values.creditLimit,
-      opening_balance: values.openingBalance,
       notes: values.notes,
-      is_active: values.isActive,
-      updated_by: user.id,
     })
     .eq("id", customerId)
     .eq("workspace_id", workspaceId);
@@ -182,7 +143,179 @@ export async function updateCustomer(
 
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}/edit`);
+  revalidatePath(`/customers/${customerId}`);
   revalidatePath("/");
 
   redirect("/customers");
+}
+
+export async function deleteCustomer(
+  workspaceId: string,
+  customerId: string,
+): Promise<CustomerActionState> {
+  const { supabase, user, error } = await getAuthorizedUser(workspaceId);
+
+  if (error || !user) {
+    return { message: error ?? "Unauthorized", success: false };
+  }
+
+  const { error: customerError } = await supabase
+    .from("customers")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", customerId)
+    .eq("workspace_id", workspaceId);
+
+  if (customerError) {
+    return { message: customerError.message, success: false };
+  }
+
+  revalidatePath("/customers");
+  revalidatePath("/");
+
+  return { message: "Customer deleted successfully", success: true };
+}
+
+export async function archiveCustomer(
+  workspaceId: string,
+  customerId: string,
+): Promise<CustomerActionState> {
+  const { supabase, user, error } = await getAuthorizedUser(workspaceId);
+
+  if (error || !user) {
+    return { message: error ?? "Unauthorized", success: false };
+  }
+
+  const { error: customerError } = await supabase
+    .from("customers")
+    .update({ status: "Inactive" })
+    .eq("id", customerId)
+    .eq("workspace_id", workspaceId);
+
+  if (customerError) {
+    return { message: customerError.message, success: false };
+  }
+
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/");
+
+  return { message: "Customer archived successfully", success: true };
+}
+
+export async function getCustomerDetails(
+  workspaceId: string,
+  customerId: string,
+) {
+  const supabase = await createClient();
+
+  const { data: customer, error: customerError } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("id", customerId)
+    .single();
+
+  if (customerError || !customer) {
+    return { customer: null, error: "Customer not found" };
+  }
+
+  // Get workspace currency
+  const { data: workspace } = await supabase
+    .from("workspaces")
+    .select("currency")
+    .eq("id", workspaceId)
+    .single();
+
+  const currency = workspace?.currency || "USD";
+  const currencySymbol = currency === "PKR" ? "Rs" : "$";
+
+  // Get sales data
+  const { data: sales } = await supabase
+    .from("sales")
+    .select(
+      "id, invoice_number, total, paid_amount, remaining_amount, sale_date, payment_status",
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("customer_id", customerId)
+    .order("sale_date", { ascending: false });
+
+  // Get sale items with product details
+  const { data: saleItems } = await supabase
+    .from("sale_items")
+    .select(
+      `
+      id,
+      sale_id,
+      product_id,
+      product_name,
+      quantity,
+      unit_price,
+      discount,
+      total,
+      created_at,
+      sales!inner(sale_date, invoice_number)
+    `,
+    )
+    .in(
+      "sale_id",
+      (sales ?? []).map((s) => s.id),
+    )
+    .order("created_at", { ascending: false });
+
+  // Get payments
+  const { data: payments } = await supabase
+    .from("payments")
+    .select(
+      "id, amount, payment_method, payment_date, notes, created_at, reference_type, reference_id",
+    )
+    .eq("workspace_id", workspaceId)
+    .eq("reference_type", "customer")
+    .eq("reference_id", customerId)
+    .order("payment_date", { ascending: false });
+
+  // Get ledger entries
+  const { data: ledger } = await supabase
+    .from("customer_ledger")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .eq("customer_id", customerId)
+    .order("transaction_date", { ascending: true });
+
+  // Calculate financial summary
+  const totalPurchases =
+    sales?.reduce((sum, sale) => sum + Number(sale.total), 0) ?? 0;
+  const totalPaid =
+    payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
+  const remainingBalance = totalPurchases - totalPaid;
+  const pendingAmount =
+    sales
+      ?.filter(
+        (sale) =>
+          sale.payment_status === "pending" ||
+          sale.payment_status === "partial",
+      )
+      .reduce((sum, sale) => sum + Number(sale.remaining_amount), 0) ?? 0;
+  const totalOrders = sales?.length ?? 0;
+  const lastPurchaseDate = sales?.[0]?.sale_date ?? null;
+  const lastPaymentDate = payments?.[0]?.payment_date ?? null;
+
+  return {
+    customer,
+    sales: sales ?? [],
+    saleItems: saleItems ?? [],
+    payments: payments ?? [],
+    ledger: ledger ?? [],
+    summary: {
+      totalPurchases,
+      totalPaid,
+      remainingBalance,
+      pendingAmount,
+      totalOrders,
+      lastPurchaseDate,
+      lastPaymentDate,
+    },
+    currency,
+    currencySymbol,
+    error: null,
+  };
 }

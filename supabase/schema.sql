@@ -102,24 +102,17 @@ CREATE TABLE inventory_transactions (
 CREATE TABLE customers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    email TEXT,
-    phone TEXT,
-    whatsapp TEXT,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
     address TEXT,
     city TEXT,
-    state TEXT,
-    country TEXT,
-    id_number TEXT,
-    credit_limit DECIMAL(10, 2) DEFAULT 0,
-    opening_balance DECIMAL(10, 2) DEFAULT 0,
-    current_balance DECIMAL(10, 2) DEFAULT 0,
     notes TEXT,
-    is_active BOOLEAN DEFAULT TRUE,
+    status TEXT DEFAULT 'Active',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by UUID REFERENCES profiles(id),
-    updated_by UUID REFERENCES profiles(id)
+    deleted_at TIMESTAMPTZ,
+    UNIQUE(workspace_id, phone)
 );
 
 -- Suppliers table
@@ -258,7 +251,7 @@ CREATE TABLE customer_ledger (
     debit DECIMAL(10, 2) DEFAULT 0,
     credit DECIMAL(10, 2) DEFAULT 0,
     balance DECIMAL(10, 2) NOT NULL,
-    description TEXT,
+    description TEXT NOT NULL DEFAULT '',
     transaction_date DATE NOT NULL DEFAULT CURRENT_DATE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES profiles(id)

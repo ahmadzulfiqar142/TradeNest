@@ -8,17 +8,23 @@ export default async function CustomersPage() {
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) redirect("/create-workspace");
 
-  const [{ data: customers }] = await Promise.all([
-    supabase
-      .from("customers")
-      .select(
-        "id, name, email, phone, whatsapp, address, city, state, country, id_number, credit_limit, opening_balance, current_balance, notes, is_active, created_at",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false }),
-  ]);
+  const { data: customers, error } = await supabase
+    .from("customers")
+    .select(
+      "id, first_name, last_name, phone, address, city, notes, status, created_at",
+    )
+    .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
 
-  const customerRows = customers ?? [];
+  if (error) {
+    console.error("[CustomersPage] Supabase error:", error.message);
+  }
 
-  return <CustomersClient customers={customerRows} />;
+  return (
+    <CustomersClient
+      customers={customers ?? []}
+      workspaceId={workspaceId}
+    />
+  );
 }

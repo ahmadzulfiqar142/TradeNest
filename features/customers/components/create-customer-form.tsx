@@ -15,19 +15,13 @@ type CreateCustomerFormProps = {
   mode?: "create" | "edit";
   customer?: {
     id: string;
-    name: string;
-    email: string | null;
-    phone: string | null;
-    whatsapp: string | null;
+    first_name: string;
+    last_name: string;
+    phone: string;
     address: string | null;
     city: string | null;
-    state: string | null;
-    country: string | null;
-    id_number: string | null;
-    credit_limit: number;
-    opening_balance: number;
     notes: string | null;
-    is_active: boolean | null;
+    status: string;
   };
 };
 
@@ -52,10 +46,8 @@ export function CreateCustomerForm({
   const isEditMode = mode === "edit";
 
   // Split full name into first and last for the form
-  const fullName = customer?.name ?? "";
-  const nameParts = fullName.split(" ");
-  const firstName = nameParts[0] || "";
-  const lastName = nameParts.slice(1).join(" ") || "";
+  const firstName = customer?.first_name ?? "";
+  const lastName = customer?.last_name ?? "";
 
   return (
     <form action={formAction} className="space-y-6">
@@ -98,74 +90,23 @@ export function CreateCustomerForm({
           />
         </div>
 
-        {/* Email */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="email"
-            className="text-sm font-medium text-foreground"
-          >
-            Email *
-          </label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            defaultValue={customer?.email ?? ""}
-            placeholder="customer@example.com"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
-
         {/* Phone */}
         <div className="flex flex-col gap-2">
           <label
             htmlFor="phone"
             className="text-sm font-medium text-foreground"
           >
-            Phone
+            Phone Number *
           </label>
           <input
             type="tel"
             id="phone"
             name="phone"
             defaultValue={customer?.phone ?? ""}
-            placeholder="+1 (555) 000-0000"
+            placeholder="Enter phone number"
             className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+            required
           />
-        </div>
-
-        {/* Company */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="company"
-            className="text-sm font-medium text-foreground"
-          >
-            Company
-          </label>
-          <input
-            type="text"
-            id="company"
-            name="company"
-            placeholder="Company name"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
-
-        {/* Customer Type */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="type" className="text-sm font-medium text-foreground">
-            Customer Type
-          </label>
-          <select
-            id="type"
-            name="type"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          >
-            <option value="individual">Individual</option>
-            <option value="business">Business</option>
-            <option value="enterprise">Enterprise</option>
-          </select>
         </div>
       </div>
 
@@ -187,38 +128,35 @@ export function CreateCustomerForm({
         />
       </div>
 
-      {/* City & Country */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="flex flex-col gap-2">
-          <label htmlFor="city" className="text-sm font-medium text-foreground">
-            City
-          </label>
-          <input
-            type="text"
-            id="city"
-            name="city"
-            defaultValue={customer?.city ?? ""}
-            placeholder="City"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
+      {/* City */}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="city" className="text-sm font-medium text-foreground">
+          City
+        </label>
+        <input
+          type="text"
+          id="city"
+          name="city"
+          defaultValue={customer?.city ?? ""}
+          placeholder="City"
+          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        />
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="country"
-            className="text-sm font-medium text-foreground"
-          >
-            Country
-          </label>
-          <input
-            type="text"
-            id="country"
-            name="country"
-            defaultValue={customer?.country ?? ""}
-            placeholder="Country"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-          />
-        </div>
+      {/* Notes */}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="notes" className="text-sm font-medium text-foreground">
+          Notes
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          defaultValue={customer?.notes ?? ""}
+          placeholder="Additional notes"
+          rows={3}
+          maxLength={500}
+          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+        />
       </div>
 
       {/* Form Actions */}

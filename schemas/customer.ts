@@ -6,35 +6,27 @@ const optionalText = z
   .optional()
   .transform((value) => (value ? value : undefined));
 
-const optionalDate = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => (value ? value : undefined));
-
-const money = z.coerce
-  .number({ error: "Enter a valid amount" })
-  .min(0, "Amount cannot be negative");
-
 export const createCustomerSchema = z.object({
-  name: z.string().trim().min(2, "Customer name must be at least 2 characters"),
-  email: z
+  firstName: z
     .string()
     .trim()
-    .email("Enter a valid email address")
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  phone: optionalText,
-  whatsapp: optionalText,
+    .min(2, "First name must be at least 2 characters")
+    .max(50, "First name must not exceed 50 characters"),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, "Last name must be at least 2 characters")
+    .max(50, "Last name must not exceed 50 characters"),
+  phone: z
+    .string()
+    .trim()
+    .min(1, "Phone number is required")
+    .regex(/^[0-9]+$/, "Phone number must contain only numbers"),
   address: optionalText,
   city: optionalText,
-  state: optionalText,
-  country: optionalText,
-  idNumber: optionalText,
-  creditLimit: money,
-  openingBalance: money,
-  notes: optionalText,
-  isActive: z.boolean().default(true),
+  notes: optionalText.refine((val) => !val || val.length <= 500, {
+    message: "Notes must not exceed 500 characters",
+  }),
 });
 
 export type CreateCustomerFormValues = z.infer<typeof createCustomerSchema>;

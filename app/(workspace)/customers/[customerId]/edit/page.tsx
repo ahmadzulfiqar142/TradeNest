@@ -20,9 +20,7 @@ export default async function EditCustomerPage({
 
   const { data: customer } = await supabase
     .from("customers")
-    .select(
-      "id, name, email, phone, whatsapp, address, city, state, country, id_number, credit_limit, opening_balance, notes, is_active",
-    )
+    .select("id, first_name, last_name, phone, address, city, notes, status")
     .eq("workspace_id", workspaceId)
     .eq("id", customerId)
     .single();
