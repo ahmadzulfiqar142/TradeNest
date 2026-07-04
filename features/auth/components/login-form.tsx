@@ -43,60 +43,75 @@ export function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-200">
             Email Address
           </Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <Input
               id="email"
               type="email"
               placeholder="you@example.com"
               {...register("email")}
               disabled={isLoading}
-              className="h-12 pl-10 text-base"
+              className="h-12 pl-10 text-base bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
             />
           </div>
           {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+            <p className="text-sm text-red-400">{errors.email.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="password"
+            className="text-sm font-medium text-slate-200"
+          >
             Password
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
             <Input
               id="password"
               type="password"
-              placeholder="••••••••"
+              placeholder="Enter your password"
               {...register("password")}
               disabled={isLoading}
-              className="h-12 pl-10 text-base"
+              className="h-12 pl-10 text-base bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
             />
           </div>
           {errors.password && (
-            <p className="text-sm text-red-500">{errors.password.message}</p>
+            <p className="text-sm text-red-400">{errors.password.message}</p>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-medium text-red-800">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+          {error}
         </div>
       )}
 
       <Button
         type="submit"
-        className="h-12 w-full bg-gradient-to-r from-blue-600 to-blue-700 text-base font-semibold shadow-lg shadow-blue-500/50 hover:from-blue-700 hover:to-blue-800"
+        className="w-full h-12 bg-primary text-primary-foreground font-semibold hover:bg-primary/90"
         disabled={isLoading}
       >
         {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
         Sign In
       </Button>
+
+      {/* Demo Credentials */}
+      <div className="pt-4 border-t border-slate-700 space-y-2">
+        <p className="text-xs text-slate-400">Demo Credentials:</p>
+        <p className="text-xs text-slate-500">
+          Email:{" "}
+          <span className="text-slate-300 font-mono">demo@example.com</span>
+        </p>
+        <p className="text-xs text-slate-500">
+          Password: <span className="text-slate-300 font-mono">demo123</span>
+        </p>
+      </div>
     </form>
   );
 }

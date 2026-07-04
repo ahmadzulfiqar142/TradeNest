@@ -21,7 +21,9 @@ export default async function EditProductPage({
   const [{ data: product }, { data: categories }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, description, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, expiry_date")
+      .select(
+        "id, name, description, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, expiry_date",
+      )
       .eq("workspace_id", workspaceId)
       .eq("id", productId)
       .single(),
@@ -40,7 +42,9 @@ export default async function EditProductPage({
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Edit product</h1>
-            <p className="text-sm text-gray-500">Update product details, image, price, and stock.</p>
+            <p className="text-sm text-gray-500">
+              Update product details, image, price, and stock.
+            </p>
           </div>
           <Button variant="outline" asChild>
             <Link href="/products">

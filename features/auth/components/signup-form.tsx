@@ -4,21 +4,23 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, User, Mail, Lock, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { signup } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const signupSchema = z.object({
-  fullName: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const signupSchema = z
+  .object({
+    fullName: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 type SignupFormValues = z.infer<typeof signupSchema>;
 
@@ -56,15 +58,26 @@ export function SignupForm() {
   if (success) {
     return (
       <div className="space-y-4 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-          <CheckCircle2 className="h-8 w-8 text-green-600" />
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-8 w-8 text-green-400"
+          >
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Check your email
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">
-            We sent you a verification link. Please verify your email to continue.
+          <h3 className="text-lg font-semibold text-white">Check your email</h3>
+          <p className="mt-2 text-sm text-slate-400">
+            We sent you a verification link. Please verify your email to
+            continue.
           </p>
         </div>
       </div>
@@ -75,95 +88,93 @@ export function SignupForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="fullName"
+            className="text-sm font-medium text-slate-200"
+          >
             Full Name
           </Label>
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="John Doe"
-              {...register("fullName")}
-              disabled={isLoading}
-              className="h-12 pl-10 text-base"
-            />
-          </div>
+          <Input
+            id="fullName"
+            type="text"
+            placeholder="John Doe"
+            {...register("fullName")}
+            disabled={isLoading}
+            className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
           {errors.fullName && (
-            <p className="text-sm text-red-500">{errors.fullName.message}</p>
+            <p className="text-sm text-red-400">{errors.fullName.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+          <Label htmlFor="email" className="text-sm font-medium text-slate-200">
             Email Address
           </Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              {...register("email")}
-              disabled={isLoading}
-              className="h-12 pl-10 text-base"
-            />
-          </div>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            {...register("email")}
+            disabled={isLoading}
+            className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
           {errors.email && (
-            <p className="text-sm text-red-500">{errors.email.message}</p>
+            <p className="text-sm text-red-400">{errors.email.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="password"
+            className="text-sm font-medium text-slate-200"
+          >
             Password
           </Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              {...register("password")}
-              disabled={isLoading}
-              className="h-12 pl-10 text-base"
-            />
-          </div>
+          <Input
+            id="password"
+            type="password"
+            placeholder="At least 6 characters"
+            {...register("password")}
+            disabled={isLoading}
+            className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
           {errors.password && (
-            <p className="text-sm text-red-500">{errors.password.message}</p>
+            <p className="text-sm text-red-400">{errors.password.message}</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+          <Label
+            htmlFor="confirmPassword"
+            className="text-sm font-medium text-slate-200"
+          >
             Confirm Password
           </Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <Input
-              id="confirmPassword"
-              type="password"
-              placeholder="••••••••"
-              {...register("confirmPassword")}
-              disabled={isLoading}
-              className="h-12 pl-10 text-base"
-            />
-          </div>
+          <Input
+            id="confirmPassword"
+            type="password"
+            placeholder="Confirm your password"
+            {...register("confirmPassword")}
+            disabled={isLoading}
+            className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-colors"
+          />
           {errors.confirmPassword && (
-            <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+            <p className="text-sm text-red-400">
+              {errors.confirmPassword.message}
+            </p>
           )}
         </div>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm font-medium text-red-800">{error}</p>
+        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
+          {error}
         </div>
       )}
-
       <Button
         type="submit"
-        className="h-12 w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-base font-semibold shadow-lg shadow-emerald-500/50 hover:from-emerald-700 hover:to-teal-700"
+        className="w-full h-12 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isLoading}
       >
         {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}

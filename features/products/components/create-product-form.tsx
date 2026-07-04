@@ -133,28 +133,33 @@ export function CreateProductForm({
     <form action={formAction} className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="name">Product name</Label>
+          <Label htmlFor="name" className="text-gray-300">
+            Product name
+          </Label>
           <Input
             id="name"
             name="name"
             placeholder="Classic cotton shirt"
             defaultValue={product?.name ?? ""}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="productImage">Product image</Label>
+          <Label htmlFor="productImage" className="text-gray-300">
+            Product image
+          </Label>
           <input type="hidden" name="imageUrl" value={imageUrl} />
-          <div className="flex flex-col gap-4 rounded-lg border border-[#D9D9D9] p-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-4 rounded-lg border border-gray-600 p-4 sm:flex-row sm:items-center bg-gray-700">
             {imageUrl ? (
               <div
-                className="h-24 w-24 rounded-md border bg-cover bg-center"
+                className="h-24 w-24 rounded-md border border-gray-600 bg-cover bg-center"
                 style={{ backgroundImage: `url(${imageUrl})` }}
                 aria-label="Product image preview"
               />
             ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-md border bg-gray-50">
+              <div className="flex h-24 w-24 items-center justify-center rounded-md border border-gray-600 bg-gray-800">
                 <ImageIcon className="h-8 w-8 text-gray-400" />
               </div>
             )}
@@ -178,6 +183,7 @@ export function CreateProductForm({
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
+                  className="border-gray-600 text-gray-300 hover:bg-gray-600"
                 >
                   <Upload className="h-4 w-4" />
                   {uploading
@@ -197,13 +203,14 @@ export function CreateProductForm({
                         fileInputRef.current.value = "";
                       }
                     }}
+                    className="text-gray-300 hover:bg-gray-600"
                   >
                     Remove
                   </Button>
                 ) : null}
               </div>
               {uploadMessage ? (
-                <p className="text-sm text-gray-500" aria-live="polite">
+                <p className="text-sm text-gray-400" aria-live="polite">
                   {uploadMessage}
                 </p>
               ) : null}
@@ -212,16 +219,22 @@ export function CreateProductForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="categoryId">Category</Label>
+          <Label htmlFor="categoryId" className="text-gray-300">
+            Category
+          </Label>
           <select
             id="categoryId"
             name="categoryId"
-            className="flex h-12 w-full rounded-lg border border-[#D9D9D9] bg-white px-4 py-2 text-base text-[#0F172A] transition-all focus-visible:border-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB]"
+            className="flex h-12 w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-base text-gray-100 transition-all focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
             defaultValue={product?.category_id ?? ""}
           >
             <option value="">Uncategorized</option>
             {categories.map((category) => (
-              <option key={category.id} value={category.id}>
+              <option
+                key={category.id}
+                value={category.id}
+                className="bg-gray-700"
+              >
                 {category.name}
               </option>
             ))}
@@ -229,16 +242,21 @@ export function CreateProductForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="newCategoryName">New category</Label>
+          <Label htmlFor="newCategoryName" className="text-gray-300">
+            New category
+          </Label>
           <Input
             id="newCategoryName"
             name="newCategoryName"
             placeholder="Optional"
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="purchasePrice">Purchase price</Label>
+          <Label htmlFor="purchasePrice" className="text-gray-300">
+            Purchase price
+          </Label>
           <Input
             id="purchasePrice"
             name="purchasePrice"
@@ -247,11 +265,14 @@ export function CreateProductForm({
             step="0.01"
             defaultValue={product?.purchase_price ?? 0}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sellingPrice">Selling price</Label>
+          <Label htmlFor="sellingPrice" className="text-gray-300">
+            Selling price
+          </Label>
           <Input
             id="sellingPrice"
             name="sellingPrice"
@@ -260,11 +281,14 @@ export function CreateProductForm({
             step="0.01"
             defaultValue={product?.selling_price ?? 0}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="stockQuantity">Opening stock</Label>
+          <Label htmlFor="stockQuantity" className="text-gray-300">
+            Opening stock
+          </Label>
           <Input
             id="stockQuantity"
             name="stockQuantity"
@@ -273,11 +297,14 @@ export function CreateProductForm({
             step="1"
             defaultValue={product?.stock_quantity ?? 0}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="minStockQuantity">Low stock alert</Label>
+          <Label htmlFor="minStockQuantity" className="text-gray-300">
+            Low stock alert
+          </Label>
           <Input
             id="minStockQuantity"
             name="minStockQuantity"
@@ -286,26 +313,33 @@ export function CreateProductForm({
             step="1"
             defaultValue={product?.min_stock_quantity ?? 0}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="expiryDate">Expiry date</Label>
+          <Label htmlFor="expiryDate" className="text-gray-300">
+            Expiry date
+          </Label>
           <Input
             id="expiryDate"
             name="expiryDate"
             type="date"
             defaultValue={product?.expiry_date ?? ""}
+            className="bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-600"
           />
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="description">Description</Label>
+          <Label htmlFor="description" className="text-gray-300">
+            Description
+          </Label>
           <Input
             id="description"
             name="description"
             placeholder="Optional product notes"
             defaultValue={product?.description ?? ""}
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
       </div>
@@ -314,8 +348,8 @@ export function CreateProductForm({
         <p
           className={
             state.success
-              ? "text-sm font-medium text-green-700"
-              : "text-sm font-medium text-red-600"
+              ? "text-sm font-medium text-green-400"
+              : "text-sm font-medium text-red-400"
           }
           aria-live="polite"
         >
@@ -323,7 +357,11 @@ export function CreateProductForm({
         </p>
       ) : null}
 
-      <Button type="submit" disabled={pending}>
+      <Button
+        type="submit"
+        disabled={pending}
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+      >
         {isEditMode ? (
           <Save className="h-4 w-4" />
         ) : (
