@@ -1,57 +1,62 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Eye, Trash2, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { deleteCustomer, archiveCustomer } from "@/actions/customer";
 
 interface Customer {
   id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  whatsapp: string | null;
+  first_name: string;
+  last_name: string;
+  phone: string;
   address: string | null;
   city: string | null;
-  state: string | null;
-  country: string | null;
-  id_number: string | null;
-  credit_limit: number;
-  opening_balance: number;
-  current_balance: number;
   notes: string | null;
-  is_active: boolean | null;
+  status: string;
   created_at: string;
 }
 
 interface CustomersClientProps {
   customers: Customer[];
+  workspaceId: string;
 }
 
-export default function CustomersClient({ customers }: CustomersClientProps) {
+export default function CustomersClient({
+  customers,
+  workspaceId,
+}: CustomersClientProps) {
   const columns = [
     {
-      key: "name" as const,
-      label: "Name",
+      key: "first_name" as const,
+      label: "Customer Name",
       sortable: true,
-      render: (value: string, row: Customer) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
-            {value.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <span className="font-medium text-gray-900">{value}</span>
-            {row.email && <p className="text-sm text-gray-500">{row.email}</p>}
-          </div>
-        </div>
-      ),
+      render: (_value: string, row: Customer) => {
+        const fullName = `${row.first_name} ${row.last_name}`.trim();
+        return (
+          <Link
+            href={`/customers/${row.id}`}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
+              {row.first_name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <span className="font-medium text-gray-900">{fullName}</span>
+              {row.phone && (
+                <p className="text-sm text-gray-500">{row.phone}</p>
+              )}
+            </div>
+          </Link>
+        );
+      },
     },
     {
       key: "phone" as const,
-      label: "Phone",
+      label: "Phone Number",
       sortable: true,
-      render: (value: string | null) => value || "-",
+      render: (value: string) => value || "-",
     },
     {
       key: "city" as const,
@@ -60,30 +65,11 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
       render: (value: string | null) => value || "-",
     },
     {
-      key: "country" as const,
-      label: "Country",
-      sortable: true,
-      render: (value: string | null) => value || "-",
-    },
-    {
-      key: "credit_limit" as const,
-      label: "Credit Limit",
-      sortable: true,
-      render: (value: number) => `$${Number(value).toFixed(2)}`,
-    },
-    {
-      key: "current_balance" as const,
-      label: "Balance",
-      sortable: true,
-      render: (value: number) => `$${Number(value).toFixed(2)}`,
-    },
-    {
-      key: "is_active" as const,
+      key: "status" as const,
       label: "Status",
       sortable: true,
-      render: (value: boolean | null) => {
-        const isActive = value !== false;
-        const status = isActive ? "Active" : "Inactive";
+      render: (value: string) => {
+        const isActive = value === "Active";
         const colorClass = isActive
           ? "bg-green-100 text-green-800"
           : "bg-gray-100 text-gray-800";
@@ -91,7 +77,7 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
           <span
             className={`px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
           >
-            {status}
+            {value}
           </span>
         );
       },
@@ -100,17 +86,63 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
       key: "id" as const,
       label: "Actions",
       sortable: false,
-      render: (value: string) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          asChild
-          className="text-gray-300 hover:text-white hover:bg-gray-700"
-        >
-          <Link href={`/customers/${value}/edit`}>
-            <Pencil className="h-4 w-4" />
-          </Link>
-        </Button>
+      render: (value: string, row: Customer) => (
+        <div className="flex gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-gray-300 hover:text-white hover:bg-gray-700"
+          >
+            <Link href={`/customers/${value}`}>
+              <Eye className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            asChild
+            className="text-gray-300 hover:text-white hover:bg-gray-700"
+          >
+            <Link href={`/customers/${value}/edit`}>
+              <Pencil className="h-4 w-4" />
+            </Link>
+          </Button>
+          <form
+            action={async (formData: FormData) => {
+              await archiveCustomer(workspaceId, value);
+            }}
+            className="inline"
+          >
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-yellow-400 hover:text-yellow-300 hover:bg-gray-700"
+              title="Archive"
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          </form>
+          <form
+            action={async (formData: FormData) => {
+              if (confirm("Are you sure you want to delete this customer?")) {
+                await deleteCustomer(workspaceId, value);
+              }
+            }}
+            className="inline"
+          >
+            <Button
+              type="submit"
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300 hover:bg-gray-700"
+              title="Delete"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
       ),
     },
   ];
@@ -127,11 +159,12 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
         <Button asChild>
           <Link href="/customers/new">
             <Plus className="h-4 w-4" />
-            Add customer
+            Add Customer
           </Link>
         </Button>
       </div>
 
+      {/* Customers Table */}
       <div className="rounded-lg border border-gray-700 bg-gray-800">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-100 mb-4">
@@ -152,7 +185,7 @@ export default function CustomersClient({ customers }: CustomersClientProps) {
               <Button className="mt-5" asChild>
                 <Link href="/customers/new">
                   <Plus className="h-4 w-4" />
-                  Add customer
+                  Add Customer
                 </Link>
               </Button>
             </div>

@@ -151,23 +151,18 @@ CREATE OR REPLACE FUNCTION update_customer_ledger(
 )
 RETURNS VOID AS $$
 DECLARE
-    current_balance DECIMAL(10,2);
+    last_balance DECIMAL(10,2);
     new_balance DECIMAL(10,2);
 BEGIN
-    -- Get current balance
-    SELECT current_balance INTO current_balance
-    FROM customers
-    WHERE id = p_customer_id AND workspace_id = p_workspace_id;
-    
-    -- Calculate new balance
-    new_balance := current_balance + p_debit - p_credit;
-    
-    -- Update customer balance
-    UPDATE customers
-    SET current_balance = new_balance,
-        updated_at = NOW()
-    WHERE id = p_customer_id;
-    
+    -- Get last balance from ledger (pending balance = total purchases - total payments)
+    SELECT COALESCE(balance, 0) INTO last_balance
+    FROM customer_ledger
+    WHERE customer_id = p_customer_id AND workspace_id = p_workspace_id
+    ORDER BY transaction_date DESC, created_at DESC
+    LIMIT 1;
+
+    new_balance := COALESCE(last_balance, 0) + p_debit - p_credit;
+
     -- Create ledger entry
     INSERT INTO customer_ledger (
         workspace_id,
@@ -377,7 +372,8 @@ BEGIN
             SELECT COUNT(*)
             FROM customers
             WHERE workspace_id = p_workspace_id
-            AND is_active = TRUE
+            AND status = 'Active'
+            AND deleted_at IS NULL
         ),
         'total_products', (
             SELECT COUNT(*)

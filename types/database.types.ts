@@ -299,20 +299,68 @@ export interface Database {
         Row: {
           id: string;
           workspace_id: string;
-          name: string;
-          email: string | null;
-          phone: string | null;
-          whatsapp: string | null;
+          first_name: string;
+          last_name: string;
+          phone: string;
           address: string | null;
           city: string | null;
-          state: string | null;
-          country: string | null;
-          id_number: string | null;
-          credit_limit: number;
-          opening_balance: number;
-          current_balance: number;
           notes: string | null;
-          is_active: boolean | null;
+          status: string;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          first_name: string;
+          last_name: string;
+          phone: string;
+          address?: string | null;
+          city?: string | null;
+          notes?: string | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          first_name?: string;
+          last_name?: string;
+          phone?: string;
+          address?: string | null;
+          city?: string | null;
+          notes?: string | null;
+          status?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customers_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sales: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          invoice_number: string;
+          customer_id: string | null;
+          sale_type: string;
+          subtotal: number;
+          discount: number;
+          tax: number;
+          total: number;
+          paid_amount: number;
+          remaining_amount: number;
+          payment_status: string;
+          notes: string | null;
+          sale_date: string;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -321,48 +369,212 @@ export interface Database {
         Insert: {
           id?: string;
           workspace_id: string;
-          name: string;
-          email?: string | null;
-          phone?: string | null;
-          whatsapp?: string | null;
-          address?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string | null;
-          id_number?: string | null;
-          credit_limit?: number;
-          opening_balance?: number;
-          current_balance?: number;
+          invoice_number: string;
+          customer_id?: string | null;
+          sale_type?: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total: number;
+          paid_amount?: number;
+          remaining_amount?: number;
+          payment_status?: string;
           notes?: string | null;
-          is_active?: boolean | null;
+          sale_date?: string;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
         };
         Update: {
-          name?: string;
-          email?: string | null;
-          phone?: string | null;
-          whatsapp?: string | null;
-          address?: string | null;
-          city?: string | null;
-          state?: string | null;
-          country?: string | null;
-          id_number?: string | null;
-          credit_limit?: number;
-          opening_balance?: number;
+          invoice_number?: string;
+          customer_id?: string | null;
+          sale_type?: string;
+          subtotal?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+          paid_amount?: number;
+          remaining_amount?: number;
+          payment_status?: string;
           notes?: string | null;
-          is_active?: boolean | null;
+          sale_date?: string;
           updated_at?: string;
           updated_by?: string | null;
         };
         Relationships: [
           {
-            foreignKeyName: "customers_workspace_id_fkey";
+            foreignKeyName: "sales_workspace_id_fkey";
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sales_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      sale_items: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          sale_id: string;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          unit_price: number;
+          discount: number;
+          tax: number;
+          total: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          sale_id: string;
+          product_id: string;
+          product_name: string;
+          quantity: number;
+          unit_price: number;
+          discount?: number;
+          tax?: number;
+          total: number;
+          created_at?: string;
+        };
+        Update: {
+          product_name?: string;
+          quantity?: number;
+          unit_price?: number;
+          discount?: number;
+          tax?: number;
+          total?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      payments: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          reference_type: string;
+          reference_id: string;
+          amount: number;
+          payment_method: string;
+          payment_date: string;
+          notes: string | null;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          reference_type: string;
+          reference_id: string;
+          amount: number;
+          payment_method: string;
+          payment_date?: string;
+          notes?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          reference_type?: string;
+          reference_id?: string;
+          amount?: number;
+          payment_method?: string;
+          payment_date?: string;
+          notes?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payments_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      customer_ledger: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          customer_id: string;
+          transaction_type: string;
+          reference_type: string | null;
+          reference_id: string | null;
+          debit: number;
+          credit: number;
+          balance: number;
+          description: string;
+          transaction_date: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          customer_id: string;
+          transaction_type: string;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          debit?: number;
+          credit?: number;
+          balance: number;
+          description: string;
+          transaction_date?: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          transaction_type?: string;
+          reference_type?: string | null;
+          reference_id?: string | null;
+          debit?: number;
+          credit?: number;
+          balance?: number;
+          description?: string;
+          transaction_date?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customer_ledger_workspace_id_fkey";
+            columns: ["workspace_id"];
+            isOneToOne: false;
+            referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customer_ledger_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
             referencedColumns: ["id"];
           },
         ];
