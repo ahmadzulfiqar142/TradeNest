@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Check, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { OnboardingStepOne } from "./onboarding-step-one";
 import { OnboardingStepTwo } from "./onboarding-step-two";
 import { OnboardingStepThree } from "./onboarding-step-three";

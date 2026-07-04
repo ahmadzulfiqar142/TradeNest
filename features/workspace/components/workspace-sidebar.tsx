@@ -12,7 +12,6 @@ import {
   Settings,
   Warehouse,
   CreditCard,
-  FileText,
   UserCircle,
   ChevronRight,
   Bell,

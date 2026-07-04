@@ -12,8 +12,6 @@ import {
   Settings,
   Warehouse,
   CreditCard,
-  FileText,
-  UserCircle,
   Bell,
   MessageSquare,
   X,

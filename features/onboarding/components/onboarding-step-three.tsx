@@ -3,21 +3,12 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Loader2,
-  MapPin,
-  Phone,
-  Mail,
-  MessageSquare,
-  ArrowLeft,
-  ArrowRight,
-} from "lucide-react";
+import { MapPin, Phone, Mail, MessageSquare } from "lucide-react";
 import { createWorkspaceOnboarding } from "@/actions/onboarding";
 import {
   createWorkspaceSchema,
   type CreateWorkspaceFormValues,
 } from "@/schemas/workspace";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -97,17 +88,6 @@ export function OnboardingStepThree({
       onTriggerSubmit(handleNextClick);
     }
   }, [onTriggerSubmit, handleNextClick]);
-
-  // Merge workspace data with contact info
-  const mergedData = {
-    ...workspaceData,
-    ...{
-      businessAddress: workspaceData.businessAddress || "",
-      businessPhone: workspaceData.businessPhone || "",
-      businessEmail: workspaceData.businessEmail || "",
-      businessWhatsapp: workspaceData.businessWhatsapp || "",
-    },
-  } as CreateWorkspaceFormValues;
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">

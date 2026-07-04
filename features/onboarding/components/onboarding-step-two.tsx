@@ -1,31 +1,12 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  Loader2,
-  Building2,
-  Globe,
-  ArrowLeft,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { Building2, Globe, CheckCircle2, XCircle } from "lucide-react";
 import { checkSlugAvailability } from "@/actions/onboarding";
-import {
-  createWorkspaceSchema,
-  type CreateWorkspaceFormValues,
-} from "@/schemas/workspace";
-import { Button } from "@/components/ui/button";
+import { type CreateWorkspaceFormValues } from "@/schemas/workspace";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
