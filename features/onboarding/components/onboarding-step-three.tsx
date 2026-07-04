@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MapPin, Phone, Mail, MessageSquare } from "lucide-react";
-import { createWorkspaceOnboarding } from "@/actions/onboarding";
 import {
   createWorkspaceSchema,
   type CreateWorkspaceFormValues,
@@ -30,8 +29,6 @@ export function OnboardingStepThree({
   onBack,
   onTriggerSubmit,
 }: OnboardingStepThreeProps) {
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
@@ -51,23 +48,8 @@ export function OnboardingStepThree({
     },
   });
 
-  const onSubmit = async (data: CreateWorkspaceFormValues) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await createWorkspaceOnboarding(data);
-      if (result?.error) {
-        setError(result.error);
-        setIsLoading(false);
-      } else if (result?.success) {
-        onNext(data);
-      }
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
-      setError("An unexpected error occurred");
-      setIsLoading(false);
-    }
+  const onSubmit = (data: CreateWorkspaceFormValues) => {
+    onNext(data);
   };
 
   // Handle Next button click from parent
@@ -132,7 +114,6 @@ export function OnboardingStepThree({
                   type="text"
                   placeholder="123 Main St, City, State 12345"
                   {...register("businessAddress")}
-                  disabled={isLoading}
                   className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
                 />
               </div>
@@ -153,7 +134,6 @@ export function OnboardingStepThree({
                   type="tel"
                   placeholder="+1 (555) 000-0000"
                   {...register("businessPhone")}
-                  disabled={isLoading}
                   className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
                 />
               </div>
@@ -174,7 +154,6 @@ export function OnboardingStepThree({
                   type="email"
                   placeholder="contact@business.com"
                   {...register("businessEmail")}
-                  disabled={isLoading}
                   className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
                 />
               </div>
@@ -195,7 +174,6 @@ export function OnboardingStepThree({
                   type="tel"
                   placeholder="+1 (555) 000-0000"
                   {...register("businessWhatsapp")}
-                  disabled={isLoading}
                   className="pl-12 h-14 bg-slate-900 border-slate-600 text-slate-100 placeholder-slate-500"
                 />
               </div>
@@ -203,22 +181,7 @@ export function OnboardingStepThree({
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="rounded-xl border border-[#FEE2E2] bg-[#FEF2F2] p-5">
-            <div className="flex gap-3">
-              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[#EF4444]">
-                <span className="text-xs font-bold text-white">!</span>
-              </div>
-              <div>
-                <p className="font-semibold text-[#0F172A]">
-                  Unable to create workspace
-                </p>
-                <p className="text-sm text-[#64748B] mt-1">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
+
       </form>
     </div>
   );

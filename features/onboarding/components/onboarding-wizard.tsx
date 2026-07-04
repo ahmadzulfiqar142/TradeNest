@@ -155,7 +155,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
           </div>
 
           <div className="flex gap-3">
-            {currentStep < 4 && (
+            {currentStep < 3 && (
               <button
                 onClick={handleNext}
                 className="px-4 py-2.5 text-slate-300 hover:text-slate-100 transition-colors font-medium"

@@ -27,7 +27,7 @@ const menuItems = [
   },
   {
     label: "Products",
-    href: "/dashboard/products",
+    href: "/products",
     icon: Package,
   },
   {
@@ -42,7 +42,7 @@ const menuItems = [
   },
   {
     label: "Suppliers",
-    href: "/dashboard/suppliers",
+    href: "/suppliers",
     icon: TrendingUp,
   },
   {
