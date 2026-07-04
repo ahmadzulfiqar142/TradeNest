@@ -51,9 +51,9 @@ export function TopNav({ onMenuClick, isMobileMenuOpen }: TopNavProps) {
 
   return (
     <header className="sticky top-0 z-30 w-full bg-card border-b border-border">
-      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+      <div className="flex items-center justify-between h-16 px-4 md:pl-0 md:pr-6">
         {/* Left Section */}
-        <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className="flex items-center gap-4">
           <button
             onClick={onMenuClick}
             className="md:hidden text-foreground hover:bg-muted p-2 rounded-lg transition-colors"
@@ -65,16 +65,6 @@ export function TopNav({ onMenuClick, isMobileMenuOpen }: TopNavProps) {
               <Menu className="w-5 h-5" />
             )}
           </button>
-
-          {/* Search Bar */}
-          <div className="hidden sm:flex items-center bg-muted/30 rounded-lg px-3 py-2 flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="ml-2 bg-transparent text-sm text-foreground placeholder-muted-foreground outline-none w-full"
-            />
-          </div>
         </div>
 
         {/* Right Section */}

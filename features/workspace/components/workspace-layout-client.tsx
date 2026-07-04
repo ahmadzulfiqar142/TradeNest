@@ -27,11 +27,18 @@ export function WorkspaceLayoutClient({
   children,
 }: WorkspaceLayoutClientProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <SidebarSwitcher workspace={workspace} userRole={userRole} />
-      <div className="flex flex-col flex-1 w-full md:ml-64">
+      <SidebarSwitcher
+        workspace={workspace}
+        userRole={userRole}
+        onCollapseChange={setIsSidebarCollapsed}
+      />
+      <div
+        className={`flex flex-col flex-1 w-full transition-all duration-300 ${isSidebarCollapsed ? "md:ml-20" : "md:ml-64"}`}
+      >
         <TopNav
           onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           isMobileMenuOpen={isMobileMenuOpen}

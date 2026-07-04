@@ -86,7 +86,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   };
 
   return (
-    <Card className="max-w-2xl">
+    <Card className="max-w-2xl bg-gray-800 border-gray-700">
       <form action={formAction} className="space-y-6">
         <CardHeader>
           <div className="flex items-center gap-3">
@@ -95,7 +95,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                 onClick={() => fileInputRef.current?.click()}
                 className="relative group cursor-pointer"
               >
-                <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-white shadow-md bg-gray-100 hover:ring-2 hover:ring-blue-500 transition-all">
+                <div className="h-28 w-28 rounded-full overflow-hidden border-4 border-gray-800 shadow-md bg-gray-700 hover:ring-2 hover:ring-blue-500 transition-all">
                   {avatarUrl ? (
                     <img
                       src={avatarUrl}
@@ -103,7 +103,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center bg-gray-100">
+                    <div className="h-full w-full flex items-center justify-center bg-gray-700">
                       <User className="h-14 w-14 text-gray-400" />
                     </div>
                   )}
@@ -142,8 +142,8 @@ export function ProfileForm({ profile }: ProfileFormProps) {
             </div>
 
             <div>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-gray-100">Profile</CardTitle>
+              <CardDescription className="text-gray-400">
                 Update your personal information and avatar.
               </CardDescription>
             </div>
@@ -155,29 +155,34 @@ export function ProfileForm({ profile }: ProfileFormProps) {
 
           {/* Full Name */}
           <div className="space-y-2">
-            <Label htmlFor="full_name">Full Name</Label>
+            <Label htmlFor="full_name" className="text-gray-300">
+              Full Name
+            </Label>
             <Input
               id="full_name"
               name="full_name"
               defaultValue={profile.full_name ?? ""}
               placeholder="John Doe"
               disabled={pending}
+              className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
             />
           </div>
 
           {/* Email */}
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-gray-300">
+              Email
+            </Label>
             <Input
               id="email"
               value={profile.email}
               disabled
-              className="bg-gray-50 text-gray-500"
+              className="bg-gray-700 border-gray-600 text-gray-500"
             />
           </div>
 
           {uploadMessage && (
-            <p className="text-sm text-gray-600" aria-live="polite">
+            <p className="text-sm text-gray-400" aria-live="polite">
               {uploadMessage}
             </p>
           )}
@@ -185,14 +190,18 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           {state.message && (
             <p
               className={`text-sm font-medium ${
-                state.success ? "text-green-700" : "text-red-600"
+                state.success ? "text-green-400" : "text-red-400"
               }`}
             >
               {state.message}
             </p>
           )}
 
-          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            disabled={pending}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save Changes
           </Button>

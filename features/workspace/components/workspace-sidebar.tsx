@@ -30,6 +30,8 @@ interface WorkspaceSidebarProps {
     logo_url: string | null;
   };
   userRole: string;
+  isOpen?: boolean;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
 const menuItems = [
@@ -47,14 +49,19 @@ const menuItems = [
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
-interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-}
-
-export function Sidebar({ isOpen = true }: SidebarProps) {
+export function Sidebar({
+  workspace,
+  isOpen = true,
+  onCollapseChange,
+}: WorkspaceSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleToggleCollapse = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    onCollapseChange?.(newCollapsed);
+  };
 
   const isActive = (href: string) => {
     if (href === "/") {
@@ -79,12 +86,12 @@ export function Sidebar({ isOpen = true }: SidebarProps) {
               <Building2 className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
             <span className="font-semibold text-sidebar-foreground">
-              Dashboard
+              {workspace.name}
             </span>
           </div>
         )}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={handleToggleCollapse}
           className="text-sidebar-foreground hover:text-sidebar-accent transition-colors"
           aria-name={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >

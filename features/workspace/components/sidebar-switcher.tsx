@@ -12,9 +12,14 @@ interface SidebarSwitcherProps {
     logo_url: string | null;
   };
   userRole: string;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
-export function SidebarSwitcher({ workspace, userRole }: SidebarSwitcherProps) {
+export function SidebarSwitcher({
+  workspace,
+  userRole,
+  onCollapseChange,
+}: SidebarSwitcherProps) {
   const pathname = usePathname();
   const isSettings = pathname.startsWith("/settings");
 
@@ -22,5 +27,11 @@ export function SidebarSwitcher({ workspace, userRole }: SidebarSwitcherProps) {
     return <SettingsSidebar />;
   }
 
-  return <Sidebar />;
+  return (
+    <Sidebar
+      workspace={workspace}
+      userRole={userRole}
+      onCollapseChange={onCollapseChange}
+    />
+  );
 }
