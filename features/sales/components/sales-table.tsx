@@ -3,13 +3,33 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter, MoreVertical, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/confirm-dialog";
+import { deleteSale } from "@/actions/sale";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS } from "@/schemas/sale";
 
 type Sale = {
@@ -20,7 +40,12 @@ type Sale = {
   remaining_amount: number;
   status: string;
   sale_date: string;
-  customers: { id: string; first_name: string; last_name: string; phone: string } | null;
+  customers: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+  } | null;
 };
 
 type SalesTableProps = {
@@ -36,11 +61,13 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
-export function SalesTable({ sales }: SalesTableProps) {
+export function SalesTable({ sales, workspaceId }: SalesTableProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     return sales.filter((s) => {
@@ -60,6 +87,18 @@ export function SalesTable({ sales }: SalesTableProps) {
     });
   }, [sales, search, statusFilter]);
 
+  async function handleDelete() {
+    if (!saleToDelete) return;
+    const result = await deleteSale(workspaceId, saleToDelete);
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.message);
+    }
+    setDeleteDialogOpen(false);
+    setSaleToDelete(null);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-3 justify-between">
@@ -70,7 +109,11 @@ export function SalesTable({ sales }: SalesTableProps) {
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1"
           />
-          <Button variant="secondary" size="icon" onClick={() => setShowFilters(!showFilters)}>
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={() => setShowFilters(!showFilters)}
+          >
             <Filter className="h-4 w-4" />
           </Button>
         </div>
@@ -87,14 +130,18 @@ export function SalesTable({ sales }: SalesTableProps) {
           <CardContent className="pt-4 pb-4">
             <div className="flex gap-4 flex-wrap">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Status</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Status
+                </label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
                 >
                   {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -128,11 +175,13 @@ export function SalesTable({ sales }: SalesTableProps) {
                     <TableHead className="text-right">Paid</TableHead>
                     <TableHead className="text-right">Outstanding</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((sale) => {
-                    const outstanding = Number(sale.total) - Number(sale.paid_amount);
+                    const outstanding =
+                      Number(sale.total) - Number(sale.paid_amount);
                     return (
                       <TableRow
                         key={sale.id}
@@ -146,12 +195,17 @@ export function SalesTable({ sales }: SalesTableProps) {
                           {sale.customers ? (
                             <div>
                               <p className="font-medium text-sm">
-                                {sale.customers.first_name} {sale.customers.last_name}
+                                {sale.customers.first_name}{" "}
+                                {sale.customers.last_name}
                               </p>
-                              <p className="text-xs text-muted-foreground">{sale.customers.phone}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {sale.customers.phone}
+                              </p>
                             </div>
                           ) : (
-                            <span className="text-muted-foreground text-sm">Walk-in</span>
+                            <span className="text-muted-foreground text-sm">
+                              Walk-in
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm">
@@ -175,11 +229,50 @@ export function SalesTable({ sales }: SalesTableProps) {
                         <TableCell>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              SALE_STATUS_COLORS[sale.status] ?? "bg-gray-100 text-gray-800"
+                              SALE_STATUS_COLORS[sale.status] ??
+                              "bg-gray-100 text-gray-800"
                             }`}
                           >
                             {SALE_STATUS_LABELS[sale.status] ?? sale.status}
                           </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-300 hover:text-white hover:bg-gray-700"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link
+                                  href={`/sales/${sale.id}`}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  View
+                                </Link>
+                              </DropdownMenuItem>
+                              {(sale.status === "pending" ||
+                                sale.status === "cancelled") && (
+                                <DropdownMenuItem
+                                  className="text-red-400 focus:text-red-300"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSaleToDelete(sale.id);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     );
@@ -190,6 +283,30 @@ export function SalesTable({ sales }: SalesTableProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Sale</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this sale? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

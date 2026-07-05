@@ -180,6 +180,7 @@ export interface Database {
           updated_at: string;
           created_by: string | null;
           updated_by: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -203,6 +204,7 @@ export interface Database {
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
+          deleted_at?: string | null;
         };
         Update: {
           category_id?: string | null;
@@ -222,6 +224,7 @@ export interface Database {
           is_active?: boolean | null;
           updated_at?: string;
           updated_by?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {

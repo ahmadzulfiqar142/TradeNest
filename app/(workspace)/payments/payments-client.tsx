@@ -3,16 +3,45 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Filter, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/confirm-dialog";
 import { PaymentForm } from "@/features/payments/components/payment-form";
 import { deletePayment } from "@/actions/payment";
-import type { PaymentWithCustomer, PaymentsClientProps } from "@/types/payments";
+import type {
+  PaymentWithCustomer,
+  PaymentsClientProps,
+} from "@/types/payments";
 
 export function PaymentsClient({
   payments,
@@ -25,22 +54,33 @@ export function PaymentsClient({
 
   // Auto-open form if coming from a sale detail page (saleId in URL)
   const [showAddForm, setShowAddForm] = useState(!!searchParams.saleId);
-  const [editingPayment, setEditingPayment] = useState<PaymentWithCustomer | null>(null);
+  const [editingPayment, setEditingPayment] =
+    useState<PaymentWithCustomer | null>(null);
   const [searchQuery, setSearchQuery] = useState(searchParams.search ?? "");
   const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(() => {
     return (payments as PaymentWithCustomer[]).filter((p) => {
-      if (searchParams.customerId && p.customer_id !== searchParams.customerId) return false;
-      if (searchParams.paymentMethod && p.payment_method !== searchParams.paymentMethod) return false;
-      if (searchParams.startDate && p.payment_date < searchParams.startDate) return false;
-      if (searchParams.endDate && p.payment_date > searchParams.endDate) return false;
+      if (searchParams.customerId && p.customer_id !== searchParams.customerId)
+        return false;
+      if (
+        searchParams.paymentMethod &&
+        p.payment_method !== searchParams.paymentMethod
+      )
+        return false;
+      if (searchParams.startDate && p.payment_date < searchParams.startDate)
+        return false;
+      if (searchParams.endDate && p.payment_date > searchParams.endDate)
+        return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const name = p.customers
           ? `${p.customers.first_name} ${p.customers.last_name}`.toLowerCase()
           : "";
-        return name.includes(q) || (p.reference_number ?? "").toLowerCase().includes(q);
+        return (
+          name.includes(q) ||
+          (p.reference_number ?? "").toLowerCase().includes(q)
+        );
       }
       return true;
     });
@@ -52,11 +92,19 @@ export function PaymentsClient({
     router.push(`/payments?${params.toString()}`);
   }
 
-  async function handleDelete(paymentId: string) {
-    if (!confirm("Delete this payment?")) return;
-    const result = await deletePayment(workspaceId, paymentId);
-    if (result.success) router.refresh();
-    else alert(result.message);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!paymentToDelete) return;
+    const result = await deletePayment(workspaceId, paymentToDelete);
+    if (result.success) {
+      router.refresh();
+    } else {
+      alert(result.message);
+    }
+    setDeleteDialogOpen(false);
+    setPaymentToDelete(null);
   }
 
   function handleSuccess() {
@@ -70,7 +118,10 @@ export function PaymentsClient({
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
         <form
-          onSubmit={(e) => { e.preventDefault(); pushParam("search", searchQuery); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            pushParam("search", searchQuery);
+          }}
           className="flex gap-2 flex-1 max-w-md"
         >
           <Input
@@ -88,7 +139,12 @@ export function PaymentsClient({
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
-          <Button onClick={() => { setEditingPayment(null); setShowAddForm((v) => !v); }}>
+          <Button
+            onClick={() => {
+              setEditingPayment(null);
+              setShowAddForm((v) => !v);
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
           </Button>
@@ -101,7 +157,9 @@ export function PaymentsClient({
           <CardContent className="pt-4 pb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Customer</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Customer
+                </label>
                 <select
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
                   value={searchParams.customerId ?? ""}
@@ -116,25 +174,50 @@ export function PaymentsClient({
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Method</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Method
+                </label>
                 <select
                   className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
                   value={searchParams.paymentMethod ?? ""}
                   onChange={(e) => pushParam("paymentMethod", e.target.value)}
                 >
                   <option value="">All Methods</option>
-                  {["cash","bank_transfer","jazzcash","easypaisa","credit_card","debit_card","cheque","other"].map((m) => (
-                    <option key={m} value={m}>{m.replace(/_/g, " ")}</option>
+                  {[
+                    "cash",
+                    "bank_transfer",
+                    "jazzcash",
+                    "easypaisa",
+                    "credit_card",
+                    "debit_card",
+                    "cheque",
+                    "other",
+                  ].map((m) => (
+                    <option key={m} value={m}>
+                      {m.replace(/_/g, " ")}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">From</label>
-                <Input type="date" value={searchParams.startDate ?? ""} onChange={(e) => pushParam("startDate", e.target.value)} />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  From
+                </label>
+                <Input
+                  type="date"
+                  value={searchParams.startDate ?? ""}
+                  onChange={(e) => pushParam("startDate", e.target.value)}
+                />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">To</label>
-                <Input type="date" value={searchParams.endDate ?? ""} onChange={(e) => pushParam("endDate", e.target.value)} />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  To
+                </label>
+                <Input
+                  type="date"
+                  value={searchParams.endDate ?? ""}
+                  onChange={(e) => pushParam("endDate", e.target.value)}
+                />
               </div>
             </div>
           </CardContent>
@@ -161,7 +244,11 @@ export function PaymentsClient({
             <div className="text-center py-12">
               <p className="text-muted-foreground">No payments found</p>
               {!showAddForm && (
-                <Button onClick={() => setShowAddForm(true)} className="mt-4" variant="secondary">
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  className="mt-4"
+                  variant="secondary"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add first payment
                 </Button>
@@ -210,23 +297,38 @@ export function PaymentsClient({
                         {p.notes ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setEditingPayment(p); setShowAddForm(false); }}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(p.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-gray-300 hover:text-white hover:bg-gray-700"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditingPayment(p);
+                                setShowAddForm(false);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-400 focus:text-red-300"
+                              onClick={() => {
+                                setPaymentToDelete(p.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -236,6 +338,30 @@ export function PaymentsClient({
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Payment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this payment? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

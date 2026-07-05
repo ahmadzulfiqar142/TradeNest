@@ -331,3 +331,29 @@ export async function updateProduct(
 
   redirect(`/${workspaceSlug}/products`);
 }
+
+export async function deleteProduct(
+  workspaceId: string,
+  productId: string,
+): Promise<ProductActionState> {
+  const { supabase, user, error } = await getAuthorizedUser(workspaceId);
+
+  if (error || !user) {
+    return { message: error ?? "Unauthorized", success: false };
+  }
+
+  const { error: productError } = await supabase
+    .from("products")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", productId)
+    .eq("workspace_id", workspaceId);
+
+  if (productError) {
+    return { message: productError.message, success: false };
+  }
+
+  revalidatePath("/products");
+  revalidatePath("/");
+
+  return { message: "Product deleted successfully", success: true };
+}

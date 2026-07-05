@@ -403,3 +403,47 @@ export async function getCustomersForSale(workspaceId: string) {
   if (error) return { customers: [], error: error.message };
   return { customers: data ?? [], error: null };
 }
+
+export async function deleteSale(
+  workspaceId: string,
+  saleId: string,
+): Promise<SaleActionState> {
+  const { supabase, user, error } = await getAuthorizedUser(workspaceId);
+  if (error || !user)
+    return { message: error ?? "Unauthorized", success: false };
+
+  // Check if sale exists and get its status
+  const { data: sale, error: saleError } = await supabase
+    .from("sales")
+    .select("status, paid_amount, total")
+    .eq("id", saleId)
+    .eq("workspace_id", workspaceId)
+    .single();
+
+  if (saleError || !sale) {
+    return { message: "Sale not found", success: false };
+  }
+
+  // Prevent deletion of paid or partially paid sales
+  if (sale.status === "paid" || sale.status === "partially_paid") {
+    return {
+      message: `Cannot delete ${sale.status.replace("_", " ")} sales. Please cancel the sale instead.`,
+      success: false,
+    };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("sales")
+    .delete()
+    .eq("id", saleId)
+    .eq("workspace_id", workspaceId);
+
+  if (deleteError) {
+    return { message: deleteError.message, success: false };
+  }
+
+  revalidatePath("/sales");
+  revalidatePath("/");
+
+  return { message: "Sale deleted successfully", success: true };
+}

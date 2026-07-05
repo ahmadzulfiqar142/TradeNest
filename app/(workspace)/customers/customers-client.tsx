@@ -1,9 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
-import { Plus, Pencil, Eye, Trash2, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Plus, Pencil, Eye, Trash2, Archive, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/confirm-dialog";
 import { deleteCustomer, archiveCustomer } from "@/actions/customer";
 
 interface Customer {
@@ -27,6 +42,21 @@ export default function CustomersClient({
   customers,
   workspaceId,
 }: CustomersClientProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!customerToDelete) return;
+    const result = await deleteCustomer(workspaceId, customerToDelete);
+    if (result.success) {
+      window.location.reload();
+    } else {
+      alert(result.message);
+    }
+    setDeleteDialogOpen(false);
+    setCustomerToDelete(null);
+  }
+
   const columns = [
     {
       key: "first_name" as const,
@@ -87,62 +117,56 @@ export default function CustomersClient({
       label: "Actions",
       sortable: false,
       render: (value: string, row: Customer) => (
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="text-gray-300 hover:text-white hover:bg-gray-700"
-          >
-            <Link href={`/customers/${value}`}>
-              <Eye className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            asChild
-            className="text-gray-300 hover:text-white hover:bg-gray-700"
-          >
-            <Link href={`/customers/${value}/edit`}>
-              <Pencil className="h-4 w-4" />
-            </Link>
-          </Button>
-          <form
-            action={async (formData: FormData) => {
-              await archiveCustomer(workspaceId, value);
-            }}
-            className="inline"
-          >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <Button
-              type="submit"
               variant="ghost"
               size="sm"
-              className="text-yellow-400 hover:text-yellow-300 hover:bg-gray-700"
-              title="Archive"
+              className="text-gray-300 hover:text-white hover:bg-gray-700"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/customers/${value}`}
+                className="flex items-center gap-2"
+              >
+                <Eye className="h-4 w-4" />
+                View
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/customers/${value}/edit`}
+                className="flex items-center gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                await archiveCustomer(workspaceId, value);
+                window.location.reload();
+              }}
             >
               <Archive className="h-4 w-4" />
-            </Button>
-          </form>
-          <form
-            action={async (formData: FormData) => {
-              if (confirm("Are you sure you want to delete this customer?")) {
-                await deleteCustomer(workspaceId, value);
-              }
-            }}
-            className="inline"
-          >
-            <Button
-              type="submit"
-              variant="ghost"
-              size="sm"
-              className="text-red-400 hover:text-red-300 hover:bg-gray-700"
-              title="Delete"
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-400 focus:text-red-300"
+              onClick={() => {
+                setCustomerToDelete(value);
+                setDeleteDialogOpen(true);
+              }}
             >
               <Trash2 className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
@@ -199,6 +223,30 @@ export default function CustomersClient({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Customer</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this customer? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
