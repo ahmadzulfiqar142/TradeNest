@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useState, useMemo, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useState,
+  useMemo,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, ShoppingCart } from "lucide-react";
 import { createSale, type SaleActionState } from "@/actions/sale";
@@ -14,7 +20,6 @@ type Product = {
   name: string;
   selling_price: number;
   stock_quantity: number;
-  unit: string | null;
   sku: string | null;
 };
 
@@ -52,13 +57,22 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
   const [pending, startTransition] = useTransition();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split("T")[0]);
+  const [saleDate, setSaleDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
   const [discount, setDiscount] = useState(0);
   const [notes, setNotes] = useState("");
   const [paidAmount, setPaidAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [items, setItems] = useState<LineItem[]>([
-    { productId: "", productName: "", quantity: 1, unitPrice: 0, discount: 0, total: 0 },
+    {
+      productId: "",
+      productName: "",
+      quantity: 1,
+      unitPrice: 0,
+      discount: 0,
+      total: 0,
+    },
   ]);
 
   useEffect(() => {
@@ -71,9 +85,16 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
     () => items.reduce((sum, item) => sum + item.total, 0),
     [items],
   );
-  const total = useMemo(() => Math.max(0, subtotal - discount), [subtotal, discount]);
+  const total = useMemo(
+    () => Math.max(0, subtotal - discount),
+    [subtotal, discount],
+  );
 
-  const updateItem = (index: number, field: keyof LineItem, value: string | number) => {
+  const updateItem = (
+    index: number,
+    field: keyof LineItem,
+    value: string | number,
+  ) => {
     setItems((prev) => {
       const updated = [...prev];
       const item = { ...updated[index], [field]: value };
@@ -98,7 +119,14 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
   const addItem = () =>
     setItems((prev) => [
       ...prev,
-      { productId: "", productName: "", quantity: 1, unitPrice: 0, discount: 0, total: 0 },
+      {
+        productId: "",
+        productName: "",
+        quantity: 1,
+        unitPrice: 0,
+        discount: 0,
+        total: 0,
+      },
     ]);
 
   const removeItem = (index: number) =>
@@ -130,7 +158,10 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-foreground">
-                Customer <span className="text-muted-foreground text-xs">(optional)</span>
+                Customer{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional)
+                </span>
               </label>
               <Autocomplete
                 options={customers.map((c) => ({
@@ -158,7 +189,9 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-foreground">Notes</label>
+              <label className="text-sm font-medium text-foreground">
+                Notes
+              </label>
               <input
                 type="text"
                 value={notes}
@@ -176,7 +209,12 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-foreground">Items</h2>
-            <Button type="button" variant="secondary" size="sm" onClick={addItem}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={addItem}
+            >
               <Plus className="h-4 w-4 mr-1" />
               Add Item
             </Button>
@@ -203,7 +241,9 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
                       subtitle: `Rs. ${Number(p.selling_price).toLocaleString()} · Stock: ${p.stock_quantity}`,
                     }))}
                     value={item.productId || null}
-                    onValueChange={(v) => updateItem(index, "productId", v ?? "")}
+                    onValueChange={(v) =>
+                      updateItem(index, "productId", v ?? "")
+                    }
                     placeholder="Select product..."
                   />
                 </div>
@@ -213,7 +253,11 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
                     min={1}
                     value={item.quantity}
                     onChange={(e) =>
-                      updateItem(index, "quantity", parseInt(e.target.value) || 1)
+                      updateItem(
+                        index,
+                        "quantity",
+                        parseInt(e.target.value) || 1,
+                      )
                     }
                     className={`${inputClass} text-center w-full`}
                     placeholder="Qty"
@@ -226,7 +270,11 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
                     step="0.01"
                     value={item.unitPrice}
                     onChange={(e) =>
-                      updateItem(index, "unitPrice", parseFloat(e.target.value) || 0)
+                      updateItem(
+                        index,
+                        "unitPrice",
+                        parseFloat(e.target.value) || 0,
+                      )
                     }
                     className={`${inputClass} text-center w-full`}
                     placeholder="Price"
@@ -239,7 +287,11 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
                     max={100}
                     value={item.discount}
                     onChange={(e) =>
-                      updateItem(index, "discount", parseFloat(e.target.value) || 0)
+                      updateItem(
+                        index,
+                        "discount",
+                        parseFloat(e.target.value) || 0,
+                      )
                     }
                     className={`${inputClass} text-center w-full`}
                     placeholder="0"
@@ -283,7 +335,9 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
             </div>
             <div className="flex gap-8 text-base font-bold">
               <span>Total</span>
-              <span className="w-32 text-right">Rs. {total.toLocaleString()}</span>
+              <span className="w-32 text-right">
+                Rs. {total.toLocaleString()}
+              </span>
             </div>
           </div>
         </CardContent>
@@ -293,11 +347,16 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
       <Card>
         <CardContent className="pt-6">
           <h2 className="text-base font-semibold text-foreground mb-4">
-            Payment <span className="text-muted-foreground text-xs font-normal">(optional — leave 0 for credit sale)</span>
+            Payment{" "}
+            <span className="text-muted-foreground text-xs font-normal">
+              (optional — leave 0 for credit sale)
+            </span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium text-foreground">Amount Paid</label>
+              <label className="text-sm font-medium text-foreground">
+                Amount Paid
+              </label>
               <input
                 type="number"
                 min={0}
@@ -318,7 +377,8 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium text-foreground">
-                Payment Method {paidAmount > 0 && <span className="text-red-400">*</span>}
+                Payment Method{" "}
+                {paidAmount > 0 && <span className="text-red-400">*</span>}
               </label>
               <select
                 value={paymentMethod}
@@ -355,7 +415,10 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
         <Button type="button" variant="secondary" onClick={() => router.back()}>
           Cancel
         </Button>
-        <Button type="submit" disabled={pending || items.every((i) => !i.productId)}>
+        <Button
+          type="submit"
+          disabled={pending || items.every((i) => !i.productId)}
+        >
           <ShoppingCart className="h-4 w-4" />
           {pending ? "Creating..." : "Create Sale"}
         </Button>

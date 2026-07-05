@@ -17,7 +17,8 @@ async function getAuthorizedUser(workspaceId: string) {
     error: userError,
   } = await supabase.auth.getUser();
 
-  if (userError || !user) return { supabase, user: null, error: "Unauthorized" };
+  if (userError || !user)
+    return { supabase, user: null, error: "Unauthorized" };
 
   const admin = createAdminClient();
   const { data: member } = await admin
@@ -27,7 +28,8 @@ async function getAuthorizedUser(workspaceId: string) {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (!member) return { supabase, user: null, error: "No access to this workspace." };
+  if (!member)
+    return { supabase, user: null, error: "No access to this workspace." };
 
   return { supabase, user, error: null };
 }
@@ -77,13 +79,15 @@ export async function createSale(
 
   if (!parsed.success) {
     return {
-      message: parsed.error.issues[0]?.message ?? "Check the details and try again.",
+      message:
+        parsed.error.issues[0]?.message ?? "Check the details and try again.",
       success: false,
     };
   }
 
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-  if (error || !user) return { message: error ?? "Unauthorized", success: false };
+  if (error || !user)
+    return { message: error ?? "Unauthorized", success: false };
 
   const v = parsed.data;
 
@@ -123,7 +127,10 @@ export async function createSale(
     .single();
 
   if (saleError || !sale) {
-    return { message: saleError?.message || "Failed to create sale", success: false };
+    return {
+      message: saleError?.message || "Failed to create sale",
+      success: false,
+    };
   }
 
   // Insert sale items + deduct stock
@@ -133,7 +140,6 @@ export async function createSale(
       sale_id: sale.id,
       product_id: item.productId,
       product_name: item.productName,
-      unit: item.unit,
       quantity: item.quantity,
       unit_price: item.unitPrice,
       discount: item.discount,
@@ -221,7 +227,11 @@ export async function createSale(
   revalidatePath("/");
   if (v.customerId) revalidatePath(`/customers/${v.customerId}`);
 
-  return { message: "Sale created successfully", success: true, saleId: sale.id };
+  return {
+    message: "Sale created successfully",
+    success: true,
+    saleId: sale.id,
+  };
 }
 
 export async function cancelSale(
@@ -229,7 +239,8 @@ export async function cancelSale(
   saleId: string,
 ): Promise<SaleActionState> {
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-  if (error || !user) return { message: error ?? "Unauthorized", success: false };
+  if (error || !user)
+    return { message: error ?? "Unauthorized", success: false };
 
   const { data: sale } = await supabase
     .from("sales")
@@ -239,7 +250,8 @@ export async function cancelSale(
     .single();
 
   if (!sale) return { message: "Sale not found", success: false };
-  if (sale.status === "cancelled") return { message: "Sale already cancelled", success: false };
+  if (sale.status === "cancelled")
+    return { message: "Sale already cancelled", success: false };
 
   const { error: updateError } = await supabase
     .from("sales")
@@ -305,16 +317,22 @@ export async function getSales(
 
   let query = supabase
     .from("sales")
-    .select(`
+    .select(
+      `
       id, invoice_number, total, paid_amount, remaining_amount,
       status, payment_status, sale_date, notes, created_at,
       customers(id, first_name, last_name, phone)
-    `)
+    `,
+    )
     .eq("workspace_id", workspaceId)
     .order("sale_date", { ascending: false });
 
   if (options?.customerId) query = query.eq("customer_id", options.customerId);
-  if (options?.status) query = query.eq("status", options.status as "pending" | "partially_paid" | "paid" | "cancelled");
+  if (options?.status)
+    query = query.eq(
+      "status",
+      options.status as "pending" | "partially_paid" | "paid" | "cancelled",
+    );
   if (options?.startDate) query = query.gte("sale_date", options.startDate);
   if (options?.endDate) query = query.lte("sale_date", options.endDate);
 
@@ -328,15 +346,18 @@ export async function getSaleDetails(workspaceId: string, saleId: string) {
 
   const { data: sale, error } = await supabase
     .from("sales")
-    .select(`
+    .select(
+      `
       *,
       customers(id, first_name, last_name, phone, address, city)
-    `)
+    `,
+    )
     .eq("id", saleId)
     .eq("workspace_id", workspaceId)
     .single();
 
-  if (error || !sale) return { sale: null, items: [], payments: [], error: "Sale not found" };
+  if (error || !sale)
+    return { sale: null, items: [], payments: [], error: "Sale not found" };
 
   const { data: items } = await supabase
     .from("sale_items")

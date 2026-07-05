@@ -429,7 +429,6 @@ export interface Database {
           sale_id: string;
           product_id: string;
           product_name: string;
-          unit: string;
           quantity: number;
           unit_price: number;
           discount: number;
@@ -443,7 +442,6 @@ export interface Database {
           sale_id: string;
           product_id: string;
           product_name: string;
-          unit?: string;
           quantity: number;
           unit_price: number;
           discount?: number;
@@ -453,7 +451,6 @@ export interface Database {
         };
         Update: {
           product_name?: string;
-          unit?: string;
           quantity?: number;
           unit_price?: number;
           discount?: number;
