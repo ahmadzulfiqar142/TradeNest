@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { CustomerHeader } from "@/components/customer-details/CustomerHeader";
 import { FinancialSummary } from "@/components/customer-details/FinancialSummary";
 import { PurchaseHistoryTable } from "@/components/customer-details/PurchaseHistoryTable";
@@ -24,6 +34,7 @@ import type {
   Payment as PaymentType,
   LedgerEntry as LedgerEntryType,
 } from "@/lib/customer-details-data";
+import { PaymentForm } from "@/features/payments/components/payment-form";
 
 interface CustomerDetailsClientProps {
   customer: CustomerType;
@@ -42,6 +53,13 @@ interface CustomerDetailsClientProps {
   };
   currency: string;
   currencySymbol: string;
+  products: {
+    id: string;
+    name: string;
+    selling_price: number;
+    stock_quantity: number;
+    unit: string | null;
+  }[];
 }
 
 type Customer = CustomerType;
@@ -49,125 +67,6 @@ type Sale = SaleType;
 type SaleItem = SaleItemType;
 type Payment = PaymentType;
 type LedgerEntry = LedgerEntryType;
-
-// Dummy data for demonstration
-const dummySales: SaleType[] = [
-  {
-    id: "1",
-    invoice_number: "INV-001",
-    total: 5000,
-    paid_amount: 3000,
-    remaining_amount: 2000,
-    sale_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    payment_status: "pending",
-  },
-  {
-    id: "2",
-    invoice_number: "INV-002",
-    total: 7500,
-    paid_amount: 7500,
-    remaining_amount: 0,
-    sale_date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    payment_status: "completed",
-  },
-];
-
-const dummySaleItems: SaleItemType[] = [
-  {
-    id: "1",
-    sale_id: "1",
-    product_id: "p1",
-    product_name: "Product A",
-    quantity: 5,
-    unit_price: 1000,
-    discount: 0,
-    total: 5000,
-    created_at: new Date().toISOString(),
-    sales: {
-      sale_date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-      invoice_number: "INV-001",
-    },
-  },
-  {
-    id: "2",
-    sale_id: "2",
-    product_id: "p2",
-    product_name: "Product B",
-    quantity: 3,
-    unit_price: 2500,
-    discount: 0,
-    total: 7500,
-    created_at: new Date().toISOString(),
-    sales: {
-      sale_date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-      invoice_number: "INV-002",
-    },
-  },
-];
-
-const dummyPayments: PaymentType[] = [
-  {
-    id: "1",
-    amount: 3000,
-    payment_method: "bank_transfer",
-    payment_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    notes: "Partial payment",
-    reference_type: "sale",
-    reference_id: "1",
-  },
-  {
-    id: "2",
-    amount: 7500,
-    payment_method: "cash",
-    payment_date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-    notes: "Full payment",
-    reference_type: "sale",
-    reference_id: "2",
-  },
-];
-
-const dummyLedger: LedgerEntryType[] = [
-  {
-    id: "1",
-    transaction_type: "sale",
-    reference_type: "sale",
-    date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-    description: "Invoice INV-002",
-    debit: 7500,
-    credit: 0,
-    balance: 7500,
-  },
-  {
-    id: "2",
-    transaction_type: "payment",
-    reference_type: "payment",
-    date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-    description: "Payment received - INV-002",
-    debit: 0,
-    credit: 7500,
-    balance: 0,
-  },
-  {
-    id: "3",
-    transaction_type: "sale",
-    reference_type: "sale",
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    description: "Invoice INV-001",
-    debit: 5000,
-    credit: 0,
-    balance: 5000,
-  },
-  {
-    id: "4",
-    transaction_type: "payment",
-    reference_type: "payment",
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    description: "Partial payment - INV-001",
-    debit: 0,
-    credit: 3000,
-    balance: 2000,
-  },
-];
 
 export function CustomerDetailsClient({
   customer,
@@ -177,41 +76,35 @@ export function CustomerDetailsClient({
   ledger,
   summary,
   currencySymbol,
+  products = [],
 }: CustomerDetailsClientProps) {
-  // Use dummy data if no real data is provided
-  const displaySales = sales.length > 0 ? sales : dummySales;
-  const displaySaleItems = saleItems.length > 0 ? saleItems : dummySaleItems;
-  const displayPayments = payments.length > 0 ? payments : dummyPayments;
-  const displayLedger = ledger.length > 0 ? ledger : dummyLedger;
+  const [showAddPayment, setShowAddPayment] = useState(false);
 
   const customerData = useMemo(() => transformCustomer(customer), [customer]);
 
   const purchases = useMemo(
-    () => transformPurchases(displaySales, displaySaleItems),
-    [displaySales, displaySaleItems],
+    () => transformPurchases(sales, saleItems),
+    [sales, saleItems],
   );
 
   const paymentsData = useMemo(
-    () => transformPaymentsData(displayPayments, displaySales),
-    [displayPayments, displaySales],
+    () => transformPaymentsData(payments, sales),
+    [payments, sales],
   );
 
-  const ledgerData = useMemo(
-    () => transformLedger(displayLedger),
-    [displayLedger],
-  );
+  const ledgerData = useMemo(() => transformLedger(ledger), [ledger]);
 
   const activities = useMemo(
-    () => generateActivityTimeline(displaySales, displayPayments, customer),
-    [displaySales, displayPayments, customer],
+    () => generateActivityTimeline(sales, payments, customer),
+    [sales, payments, customer],
   );
 
   const financialSummary = useMemo(
     () => ({
       ...customerData,
-      totalPurchases: summary.totalPurchases || 12500,
-      totalPaid: summary.totalPaid || 10500,
-      balance: summary.remainingBalance || 2000,
+      totalPurchases: summary.totalPurchases,
+      totalPaid: summary.totalPaid,
+      balance: summary.remainingBalance,
     }),
     [customerData, summary],
   );
@@ -240,31 +133,166 @@ export function CustomerDetailsClient({
         <FinancialSummary summary={summary} currencySymbol={currencySymbol} />
       </div>
 
-      {/* Purchase & Payment History */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4">
-            Purchase History
-          </h2>
-          <PurchaseHistoryTable
-            sales={displaySales}
-            saleItems={displaySaleItems}
-          />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-foreground mb-4">
-            Payment History
-          </h2>
-          <PaymentHistoryTable payments={paymentsData} />
-        </div>
-      </div>
-
-      {/* Ledger */}
+      {/* Transaction History */}
       <div>
-        <h2 className="text-lg font-bold text-foreground mb-4">
-          Running Khata (Ledger)
-        </h2>
-        <RunningLedger ledger={ledgerData} />
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-foreground">
+            Transaction History
+          </h2>
+          <Button size="sm" onClick={() => setShowAddPayment(!showAddPayment)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Payment
+          </Button>
+        </div>
+        {showAddPayment && (
+          <Card className="mb-4">
+            <CardContent className="pt-6">
+              <PaymentForm
+                workspaceId={customer.id}
+                customers={[customer]}
+                products={products}
+                mode="create"
+                onSuccess={() => setShowAddPayment(false)}
+              />
+            </CardContent>
+          </Card>
+        )}
+        <Card>
+          <CardContent className="pt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Invoice/Ref</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(() => {
+                  const transactions: any[] = [];
+
+                  // Add sales
+                  sales.forEach((sale) => {
+                    const saleItemsList = saleItems.filter(
+                      (item) => item.sale_id === sale.id,
+                    );
+                    const productNames = saleItemsList
+                      .map((item) => item.product_name)
+                      .join(", ");
+                    const totalQty = saleItemsList.reduce(
+                      (sum, item) => sum + item.quantity,
+                      0,
+                    );
+
+                    transactions.push({
+                      id: sale.id,
+                      date: sale.sale_date,
+                      type: "sale",
+                      invoice: sale.invoice_number,
+                      product: productNames || "N/A",
+                      quantity: totalQty,
+                      method: "-",
+                      amount: Number(sale.total),
+                      status: sale.payment_status,
+                    });
+                  });
+
+                  // Add payments
+                  payments.forEach((payment) => {
+                    const sale = sales.find(
+                      (s) => s.id === payment.reference_id,
+                    );
+                    transactions.push({
+                      id: payment.id,
+                      date: payment.payment_date,
+                      type: "payment",
+                      invoice: sale?.invoice_number || "-",
+                      product: payment.notes?.includes("Product:")
+                        ? payment.notes.match(/Product: (.+?) \(/)?.[1] || "N/A"
+                        : "N/A",
+                      quantity: payment.quantity || 1,
+                      method: payment.payment_method,
+                      amount: Number(payment.amount),
+                      status:
+                        payment.payment_status === "paid"
+                          ? "completed"
+                          : "pending",
+                    });
+                  });
+
+                  // Sort by date descending
+                  transactions.sort(
+                    (a, b) =>
+                      new Date(b.date).getTime() - new Date(a.date).getTime(),
+                  );
+
+                  if (transactions.length === 0) {
+                    return (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="text-center text-muted-foreground"
+                        >
+                          No transactions found
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  return transactions.map((tx) => (
+                    <TableRow key={`${tx.type}-${tx.id}`}>
+                      <TableCell>
+                        {new Date(tx.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            tx.type === "sale"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {tx.type === "sale" ? "Purchase" : "Payment"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {tx.invoice}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {tx.product}
+                      </TableCell>
+                      <TableCell>{tx.quantity}</TableCell>
+                      <TableCell className="capitalize">
+                        {tx.method === "-" ? "-" : tx.method.replace(/_/g, " ")}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        ${Number(tx.amount).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            tx.status === "completed" || tx.status === "paid"
+                              ? "bg-green-100 text-green-800"
+                              : tx.status === "pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {tx.status}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ));
+                })()}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Activity Timeline */}
@@ -273,8 +301,8 @@ export function CustomerDetailsClient({
           Activity Timeline
         </h2>
         <ActivityTimeline
-          sales={displaySales}
-          payments={displayPayments}
+          sales={sales}
+          payments={payments}
           customer={customer}
         />
       </div>

@@ -51,7 +51,7 @@ export default function ProductsClient({
               <ImageIcon className="h-4 w-4 text-gray-400" />
             </div>
           )}
-          <span className="font-medium text-gray-900">{value}</span>
+          <span className="font-medium text-white">{value}</span>
         </div>
       ),
     },

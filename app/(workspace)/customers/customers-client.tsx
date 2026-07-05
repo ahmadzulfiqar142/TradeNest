@@ -43,7 +43,7 @@ export default function CustomersClient({
               {row.first_name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <span className="font-medium text-gray-900">{fullName}</span>
+              <span className="font-medium text-white">{fullName}</span>
               {row.phone && (
                 <p className="text-sm text-gray-500">{row.phone}</p>
               )}

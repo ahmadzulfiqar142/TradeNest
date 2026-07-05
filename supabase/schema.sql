@@ -230,14 +230,18 @@ CREATE TABLE expenses (
 CREATE TABLE payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    reference_type TEXT NOT NULL,
-    reference_id UUID NOT NULL,
+    customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    invoice_id UUID REFERENCES sales(id) ON DELETE SET NULL,
+    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+    quantity INTEGER DEFAULT 1,
     amount DECIMAL(10, 2) NOT NULL,
     payment_method TEXT NOT NULL,
     payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
     notes TEXT,
+    created_by UUID REFERENCES profiles(id),
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    created_by UUID REFERENCES profiles(id)
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ
 );
 
 -- Customer ledger table
@@ -321,6 +325,10 @@ CREATE INDEX idx_purchases_workspace ON purchases(workspace_id);
 CREATE INDEX idx_purchases_supplier ON purchases(supplier_id);
 CREATE INDEX idx_purchase_items_purchase ON purchase_items(purchase_id);
 CREATE INDEX idx_expenses_workspace ON expenses(workspace_id);
+CREATE INDEX idx_payments_workspace ON payments(workspace_id);
+CREATE INDEX idx_payments_customer ON payments(customer_id);
+CREATE INDEX idx_payments_invoice ON payments(invoice_id);
+CREATE INDEX idx_payments_date ON payments(payment_date);
 CREATE INDEX idx_customer_ledger_workspace ON customer_ledger(workspace_id);
 CREATE INDEX idx_customer_ledger_customer ON customer_ledger(customer_id);
 CREATE INDEX idx_supplier_ledger_workspace ON supplier_ledger(workspace_id);
@@ -367,4 +375,7 @@ CREATE TRIGGER update_purchases_updated_at BEFORE UPDATE ON purchases
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

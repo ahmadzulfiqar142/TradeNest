@@ -1,6 +1,6 @@
 "use client";
 
-import { DollarSign, CreditCard, Wallet } from "lucide-react";
+import { DollarSign, CreditCard, Wallet, Calculator } from "lucide-react";
 
 interface FinancialSummaryProps {
   summary: {
@@ -19,9 +19,11 @@ export function FinancialSummary({
   summary,
   currencySymbol,
 }: FinancialSummaryProps) {
+  const totalAmount = summary.remainingBalance + summary.totalPaid;
+
   const stats = [
     {
-      label: "Remaining Amount",
+      label: "Pending Balance",
       value: `${currencySymbol}${summary.remainingBalance.toLocaleString()}`,
       subValue:
         summary.pendingAmount > 0
@@ -42,9 +44,11 @@ export function FinancialSummary({
     },
     {
       label: "Total Amount",
-      value: `${currencySymbol}${summary.totalPurchases.toLocaleString()}`,
-      icon: DollarSign,
-      color: "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400",
+      value: `${currencySymbol}${totalAmount.toLocaleString()}`,
+      subValue: `Pending Balance + Paid Amount`,
+      icon: Calculator,
+      color:
+        "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400",
     },
   ];
 

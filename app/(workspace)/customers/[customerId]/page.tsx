@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { getCustomerDetails } from "@/actions/customer";
+import { getProductsForPayment } from "@/actions/payment";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import Link from "next/link";
@@ -16,11 +17,16 @@ export default async function CustomerDetailsPage({
 
   const { customerId } = await params;
 
-  const result = await getCustomerDetails(workspaceId, customerId);
+  const [result, productsResult] = await Promise.all([
+    getCustomerDetails(workspaceId, customerId),
+    getProductsForPayment(workspaceId),
+  ]);
 
   if (!result.customer || result.error) {
     notFound();
   }
+
+  const products = productsResult.products || [];
 
   return (
     <div className="space-y-6">
@@ -55,7 +61,11 @@ export default async function CustomerDetailsPage({
         customer={result.customer}
         sales={result.sales}
         saleItems={result.saleItems}
-        payments={result.payments}
+        payments={result.payments.map((payment: any) => ({
+          ...payment,
+          reference_type: "customer",
+          reference_id: payment.customer_id,
+        }))}
         ledger={result.ledger.map((entry: any) => ({
           id: entry.id,
           transaction_type: entry.transaction_type,
@@ -69,6 +79,7 @@ export default async function CustomerDetailsPage({
         summary={result.summary}
         currency={result.currency}
         currencySymbol={result.currencySymbol}
+        products={products}
       />
     </div>
   );

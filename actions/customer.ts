@@ -71,6 +71,21 @@ export async function createCustomer(
 
   const values = parsed.data;
 
+  // Check if customer with this phone number already exists in the workspace
+  const { data: existingCustomer } = await supabase
+    .from("customers")
+    .select("id, first_name, last_name")
+    .eq("workspace_id", workspaceId)
+    .eq("phone", values.phone)
+    .maybeSingle();
+
+  if (existingCustomer) {
+    return {
+      message: `A customer with this phone number already exists: ${existingCustomer.first_name} ${existingCustomer.last_name}`,
+      success: false,
+    };
+  }
+
   const { error: customerError } = await supabase.from("customers").insert({
     workspace_id: workspaceId,
     first_name: values.firstName,
@@ -123,6 +138,22 @@ export async function updateCustomer(
   }
 
   const values = parsed.data;
+
+  // Check if another customer with this phone number already exists in the workspace
+  const { data: existingCustomer } = await supabase
+    .from("customers")
+    .select("id, first_name, last_name")
+    .eq("workspace_id", workspaceId)
+    .eq("phone", values.phone)
+    .neq("id", customerId)
+    .maybeSingle();
+
+  if (existingCustomer) {
+    return {
+      message: `Another customer with this phone number already exists: ${existingCustomer.first_name} ${existingCustomer.last_name}`,
+      success: false,
+    };
+  }
 
   const { error: customerError } = await supabase
     .from("customers")
@@ -266,11 +297,11 @@ export async function getCustomerDetails(
   const { data: payments } = await supabase
     .from("payments")
     .select(
-      "id, amount, payment_method, payment_date, notes, created_at, reference_type, reference_id",
+      "id, amount, payment_method, payment_date, payment_status, notes, created_at",
     )
     .eq("workspace_id", workspaceId)
-    .eq("reference_type", "customer")
-    .eq("reference_id", customerId)
+    .eq("customer_id", customerId)
+    .is("deleted_at", null)
     .order("payment_date", { ascending: false });
 
   // Get ledger entries
@@ -284,10 +315,15 @@ export async function getCustomerDetails(
   // Calculate financial summary
   const totalPurchases =
     sales?.reduce((sum, sale) => sum + Number(sale.total), 0) ?? 0;
+
+  // Paid Amount: Sum of all payments with "paid" status
   const totalPaid =
-    payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
-  const remainingBalance = totalPurchases - totalPaid;
-  const pendingAmount =
+    payments
+      ?.filter((payment) => payment.payment_status === "paid")
+      .reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
+
+  // Remaining Amount: Sum of pending sales + pending payments
+  const pendingFromSales =
     sales
       ?.filter(
         (sale) =>
@@ -295,6 +331,14 @@ export async function getCustomerDetails(
           sale.payment_status === "partial",
       )
       .reduce((sum, sale) => sum + Number(sale.remaining_amount), 0) ?? 0;
+
+  const pendingFromPayments =
+    payments
+      ?.filter((payment) => payment.payment_status === "pending")
+      .reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
+
+  const remainingBalance = pendingFromSales + pendingFromPayments;
+  const pendingAmount = pendingFromSales + pendingFromPayments;
   const totalOrders = sales?.length ?? 0;
   const lastPurchaseDate = sales?.[0]?.sale_date ?? null;
   const lastPaymentDate = payments?.[0]?.payment_date ?? null;

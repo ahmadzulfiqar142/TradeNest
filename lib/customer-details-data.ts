@@ -44,6 +44,8 @@ export interface Payment {
   amount: number;
   payment_method: string;
   payment_date: string;
+  payment_status: string;
+  quantity: number | null;
   notes: string | null;
   reference_type: string;
   reference_id: string;
@@ -165,14 +167,15 @@ export function transformPayments(
   sales: any[],
 ): PaymentRecord[] {
   return payments.map((payment) => {
+    // Try to find invoice by reference_number or reference_id
     const sale = sales.find((s) => s.id === payment.reference_id);
     return {
       id: payment.id,
       date: payment.payment_date,
-      refNo: sale?.invoice_number || payment.reference_id,
+      refNo: payment.reference_number || sale?.invoice_number || "-",
       method: payment.payment_method?.replace(/_/g, " ") || "Unknown",
       amount: Number(payment.amount),
-      status: "completed", // Default to completed since we don't have status in payments
+      status: payment.payment_status === "paid" ? "completed" : "pending",
     };
   });
 }
@@ -210,15 +213,17 @@ export function generateActivityTimeline(
     });
   });
 
-  // Add payments as payment activities
+  // Add payments as payment activities (only for paid status)
   payments.forEach((payment) => {
-    activities.push({
-      id: `payment-${payment.id}`,
-      type: "payment",
-      action: "Payment Received",
-      details: `$${Number(payment.amount).toLocaleString()} via ${payment.payment_method?.replace(/_/g, " ") || "Unknown"}`,
-      date: payment.payment_date,
-    });
+    if (payment.payment_status === "paid") {
+      activities.push({
+        id: `payment-${payment.id}`,
+        type: "payment",
+        action: "Payment Received",
+        details: `$${Number(payment.amount).toLocaleString()} via ${payment.payment_method?.replace(/_/g, " ") || "Unknown"}`,
+        date: payment.payment_date,
+      });
+    }
   });
 
   // Add customer creation as note

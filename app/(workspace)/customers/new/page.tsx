@@ -20,7 +20,7 @@ export default async function NewCustomerPage() {
               information.
             </p>
           </div>
-          <Button variant="dark-outline" asChild>
+          <Button variant="outline" asChild>
             <Link href="/customers">
               <ArrowLeft className="h-4 w-4" />
               Customers

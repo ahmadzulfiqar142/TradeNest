@@ -40,7 +40,7 @@ export function ActivityTimeline({
     }
   };
 
-  // Generate activities from sales and payments
+  // Generate activities from sales and payments (only paid payments)
   const activities = [
     ...sales.map((sale) => ({
       id: `purchase-${sale.id}`,
@@ -49,13 +49,15 @@ export function ActivityTimeline({
       details: `Invoice ${sale.invoice_number} - $${Number(sale.total).toLocaleString()}`,
       date: sale.sale_date,
     })),
-    ...payments.map((payment) => ({
-      id: `payment-${payment.id}`,
-      type: "payment" as const,
-      action: "Payment Received",
-      details: `$${Number(payment.amount).toLocaleString()} via ${payment.payment_method.replace(/_/g, " ")}`,
-      date: payment.payment_date,
-    })),
+    ...payments
+      .filter((payment) => payment.payment_status === "paid")
+      .map((payment) => ({
+        id: `payment-${payment.id}`,
+        type: "payment" as const,
+        action: "Payment Received",
+        details: `$${Number(payment.amount).toLocaleString()} via ${payment.payment_method.replace(/_/g, " ")}`,
+        date: payment.payment_date,
+      })),
     {
       id: "customer-created",
       type: "note" as const,

@@ -482,34 +482,48 @@ export interface Database {
         Row: {
           id: string;
           workspace_id: string;
-          reference_type: string;
-          reference_id: string;
+          customer_id: string;
+          invoice_id: string | null;
+          product_id: string | null;
+          quantity: number | null;
           amount: number;
           payment_method: string;
           payment_date: string;
+          payment_status: string;
           notes: string | null;
-          created_at: string;
           created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
           workspace_id: string;
-          reference_type: string;
-          reference_id: string;
+          customer_id: string;
+          invoice_id?: string | null;
+          product_id?: string | null;
+          quantity?: number | null;
           amount: number;
           payment_method: string;
           payment_date?: string;
+          payment_status?: string;
           notes?: string | null;
-          created_at?: string;
           created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
         };
         Update: {
-          reference_type?: string;
-          reference_id?: string;
+          customer_id?: string;
+          invoice_id?: string | null;
+          product_id?: string | null;
+          quantity?: number | null;
           amount?: number;
           payment_method?: string;
           payment_date?: string;
+          payment_status?: string;
           notes?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -517,6 +531,27 @@ export interface Database {
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_invoice_id_fkey";
+            columns: ["invoice_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
             referencedColumns: ["id"];
           },
         ];
