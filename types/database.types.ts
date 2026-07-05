@@ -170,11 +170,11 @@ export interface Database {
           purchase_price: number;
           selling_price: number;
           wholesale_price: number | null;
-          unit: string | null;
           stock_quantity: number;
           min_stock_quantity: number | null;
           batch_number: string | null;
           expiry_date: string | null;
+          track_inventory: boolean | null;
           is_active: boolean | null;
           created_at: string;
           updated_at: string;
@@ -193,11 +193,11 @@ export interface Database {
           purchase_price?: number;
           selling_price?: number;
           wholesale_price?: number | null;
-          unit?: string | null;
           stock_quantity?: number;
           min_stock_quantity?: number | null;
           batch_number?: string | null;
           expiry_date?: string | null;
+          track_inventory?: boolean | null;
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
@@ -214,11 +214,11 @@ export interface Database {
           purchase_price?: number;
           selling_price?: number;
           wholesale_price?: number | null;
-          unit?: string | null;
           stock_quantity?: number;
           min_stock_quantity?: number | null;
           batch_number?: string | null;
           expiry_date?: string | null;
+          track_inventory?: boolean | null;
           is_active?: boolean | null;
           updated_at?: string;
           updated_by?: string | null;
@@ -429,6 +429,7 @@ export interface Database {
           sale_id: string;
           product_id: string;
           product_name: string;
+          unit: string;
           quantity: number;
           unit_price: number;
           discount: number;
@@ -442,6 +443,7 @@ export interface Database {
           sale_id: string;
           product_id: string;
           product_name: string;
+          unit?: string;
           quantity: number;
           unit_price: number;
           discount?: number;
@@ -451,6 +453,7 @@ export interface Database {
         };
         Update: {
           product_name?: string;
+          unit?: string;
           quantity?: number;
           unit_price?: number;
           discount?: number;

@@ -25,16 +25,17 @@ type CreateProductFormProps = {
   product?: {
     id: string;
     name: string;
+    sku: string | null;
+    barcode: string | null;
     description: string | null;
     image_url: string | null;
     category_id: string | null;
     purchase_price: number;
     selling_price: number;
     stock_quantity: number;
-    min_stock_quantity: number | null;
     expiry_date: string | null;
-  };
-};
+    is_active: boolean | null;
+  };};
 
 const initialProductActionState: ProductActionState = {
   message: "",
@@ -142,6 +143,32 @@ export function CreateProductForm({
             placeholder="Classic cotton shirt"
             defaultValue={product?.name ?? ""}
             required
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="sku" className="text-gray-300">
+            SKU
+          </Label>
+          <Input
+            id="sku"
+            name="sku"
+            placeholder="SHIRT-001"
+            defaultValue={product?.sku ?? ""}
+            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="barcode" className="text-gray-300">
+            Barcode
+          </Label>
+          <Input
+            id="barcode"
+            name="barcode"
+            placeholder="Optional"
+            defaultValue={product?.barcode ?? ""}
             className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
@@ -302,22 +329,6 @@ export function CreateProductForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="minStockQuantity" className="text-gray-300">
-            Low stock alert
-          </Label>
-          <Input
-            id="minStockQuantity"
-            name="minStockQuantity"
-            type="number"
-            min="0"
-            step="1"
-            defaultValue={product?.min_stock_quantity ?? 0}
-            required
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
           <Label htmlFor="expiryDate" className="text-gray-300">
             Expiry date
           </Label>
@@ -342,6 +353,22 @@ export function CreateProductForm({
             className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
           />
         </div>
+
+        {isEditMode && (
+          <div className="space-y-2 flex items-center gap-3">
+            <input
+              id="isActive"
+              name="isActive"
+              type="checkbox"
+              defaultChecked={product?.is_active ?? true}
+              value="true"
+              className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+            />
+            <Label htmlFor="isActive" className="text-gray-300 cursor-pointer">
+              Active
+            </Label>
+          </div>
+        )}
       </div>
 
       {state.message ? (

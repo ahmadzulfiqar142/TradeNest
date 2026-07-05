@@ -22,7 +22,7 @@ export default async function EditProductPage({
     supabase
       .from("products")
       .select(
-        "id, name, description, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, expiry_date",
+        "id, name, sku, barcode, unit, description, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, expiry_date, is_active, track_inventory",
       )
       .eq("workspace_id", workspaceId)
       .eq("id", productId)

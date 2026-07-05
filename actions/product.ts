@@ -61,6 +61,8 @@ export async function createProduct(
   void workspaceSlug; // slug no longer used in URLs
   const parsed = createProductSchema.safeParse({
     name: formData.get("name"),
+    sku: formData.get("sku"),
+    barcode: formData.get("barcode"),
     description: formData.get("description"),
     imageUrl: formData.get("imageUrl"),
     categoryId: formData.get("categoryId"),
@@ -70,6 +72,7 @@ export async function createProduct(
     stockQuantity: formData.get("stockQuantity"),
     minStockQuantity: formData.get("minStockQuantity"),
     expiryDate: formData.get("expiryDate"),
+    isActive: formData.get("isActive") === "true",
   });
 
   if (!parsed.success) {
@@ -115,14 +118,15 @@ export async function createProduct(
       workspace_id: workspaceId,
       category_id: categoryId,
       name: values.name,
+      sku: values.sku,
+      barcode: values.barcode,
       description: values.description,
       image_url: values.imageUrl,
       purchase_price: values.purchasePrice,
       selling_price: values.sellingPrice,
-      unit: "piece",
       stock_quantity: values.stockQuantity,
-      min_stock_quantity: values.minStockQuantity,
       expiry_date: values.expiryDate,
+      is_active: values.isActive,
       created_by: user.id,
       updated_by: user.id,
     })
@@ -179,6 +183,8 @@ export async function updateProduct(
 ): Promise<ProductActionState> {
   const parsed = createProductSchema.safeParse({
     name: formData.get("name"),
+    sku: formData.get("sku"),
+    barcode: formData.get("barcode"),
     description: formData.get("description"),
     imageUrl: formData.get("imageUrl"),
     categoryId: formData.get("categoryId"),
@@ -188,6 +194,8 @@ export async function updateProduct(
     stockQuantity: formData.get("stockQuantity"),
     minStockQuantity: formData.get("minStockQuantity"),
     expiryDate: formData.get("expiryDate"),
+    trackInventory: formData.get("trackInventory") === "true",
+    isActive: formData.get("isActive") === "true",
   });
 
   if (!parsed.success) {
@@ -266,13 +274,15 @@ export async function updateProduct(
     .update({
       category_id: categoryId ?? null,
       name: values.name,
+      sku: values.sku,
+      barcode: values.barcode ?? null,
       description: values.description,
-      image_url: values.imageUrl || null, // Important: allow null to remove image
+      image_url: values.imageUrl || null,
       purchase_price: values.purchasePrice,
       selling_price: values.sellingPrice,
       stock_quantity: values.stockQuantity,
-      min_stock_quantity: values.minStockQuantity,
       expiry_date: values.expiryDate,
+      is_active: values.isActive,
       updated_by: user.id,
     })
     .eq("id", productId)

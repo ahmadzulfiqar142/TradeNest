@@ -133,6 +133,7 @@ export async function createSale(
       sale_id: sale.id,
       product_id: item.productId,
       product_name: item.productName,
+      unit: item.unit,
       quantity: item.quantity,
       unit_price: item.unitPrice,
       discount: item.discount,
@@ -359,7 +360,7 @@ export async function getProductsForSale(workspaceId: string) {
 
   const { data, error } = await supabase
     .from("products")
-    .select("id, name, selling_price, stock_quantity, unit, sku")
+    .select("id, name, selling_price, stock_quantity, sku")
     .eq("workspace_id", workspaceId)
     .eq("is_active", true)
     .order("name", { ascending: true });

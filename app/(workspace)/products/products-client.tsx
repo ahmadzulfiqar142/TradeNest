@@ -33,6 +33,7 @@ interface ProductsClientProps {
 export default function ProductsClient({
   products,
   categoryNames,
+  stats,
 }: ProductsClientProps) {
   const columns = [
     {
@@ -122,6 +123,25 @@ export default function ProductsClient({
             Add product
           </Link>
         </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Active Products</p>
+          <p className="text-2xl font-bold text-gray-100">{stats.activeProducts}</p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Categories</p>
+          <p className="text-2xl font-bold text-gray-100">{stats.totalCategories}</p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Low Stock</p>
+          <p className="text-2xl font-bold text-yellow-400">{stats.lowStockCount}</p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Inventory Value</p>
+          <p className="text-2xl font-bold text-gray-100">Rs {stats.inventoryValue.toLocaleString()}</p>
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-700 bg-gray-800">
