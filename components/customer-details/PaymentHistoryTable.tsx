@@ -1,95 +1,60 @@
 "use client";
 
-import { PaymentRecord } from "@/lib/customer-details-data";
-import { CheckCircle, Clock, AlertCircle } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { PaymentHistory } from "@/lib/customer-details-data";
 
 interface PaymentHistoryTableProps {
-  payments: PaymentRecord[];
+  payments: PaymentHistory[];
+  currencySymbol: string;
 }
 
-export function PaymentHistoryTable({ payments }: PaymentHistoryTableProps) {
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return (
-          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-        );
-      case "pending":
-        return (
-          <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-        );
-      case "failed":
-        return (
-          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
-        );
-      default:
-        return null;
-    }
-  };
+export function PaymentHistoryTable({ payments, currencySymbol }: PaymentHistoryTableProps) {
+  const fmt = (n: number) => `${currencySymbol} ${n.toLocaleString()}`;
 
   return (
     <div className="bg-card border border-border rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                Date
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                Reference
-              </th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                Method
-              </th>
-              <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">
-                Amount
-              </th>
-              <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">
-                Status
-              </th>
+              <th className="px-4 py-3 text-left font-semibold text-foreground">Date</th>
+              <th className="px-4 py-3 text-left font-semibold text-foreground">Receipt</th>
+              <th className="px-4 py-3 text-left font-semibold text-foreground">Method</th>
+              <th className="px-4 py-3 text-right font-semibold text-foreground">Amount</th>
+              <th className="px-4 py-3 text-left font-semibold text-foreground">Applied To</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {payments.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-8 text-center text-muted-foreground"
-                >
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   No payment records found
                 </td>
               </tr>
             ) : (
-              payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>
-                    {new Date(payment.date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm">
-                    {payment.refNo}
-                  </TableCell>
-                  <TableCell className="capitalize">{payment.method}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    ${Number(payment.amount).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      {getStatusIcon(payment.status)}
-                      <span className="text-xs font-medium text-muted-foreground capitalize">
-                        {payment.status}
+              payments.map((p) => (
+                <tr key={p.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                    {new Date(p.paymentDate).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-sm">
+                    {p.receiptNumber ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 capitalize">
+                    {p.paymentMethod.replace(/_/g, " ")}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-green-600 dark:text-green-400">
+                    {fmt(p.amount)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {p.invoiceNumber ? (
+                      <span className="font-mono text-sm text-blue-600 dark:text-blue-400">
+                        {p.invoiceNumber}
                       </span>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Advance Payment</span>
+                    )}
+                  </td>
+                </tr>
               ))
             )}
           </tbody>

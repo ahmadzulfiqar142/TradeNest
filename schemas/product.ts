@@ -23,6 +23,8 @@ const quantity = z.coerce
 
 export const createProductSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters"),
+  sku: optionalText,
+  barcode: optionalText,
   description: optionalText,
   imageUrl: z
     .string()
@@ -35,8 +37,8 @@ export const createProductSchema = z.object({
   purchasePrice: money,
   sellingPrice: money,
   stockQuantity: quantity,
-  minStockQuantity: quantity,
   expiryDate: optionalDate,
+  isActive: z.boolean().default(true),
 });
 
 export type CreateProductFormValues = z.infer<typeof createProductSchema>;

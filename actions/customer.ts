@@ -71,6 +71,21 @@ export async function createCustomer(
 
   const values = parsed.data;
 
+  // Check if customer with this phone number already exists in the workspace
+  const { data: existingCustomer } = await supabase
+    .from("customers")
+    .select("id, first_name, last_name")
+    .eq("workspace_id", workspaceId)
+    .eq("phone", values.phone)
+    .maybeSingle();
+
+  if (existingCustomer) {
+    return {
+      message: `A customer with this phone number already exists: ${existingCustomer.first_name} ${existingCustomer.last_name}`,
+      success: false,
+    };
+  }
+
   const { error: customerError } = await supabase.from("customers").insert({
     workspace_id: workspaceId,
     first_name: values.firstName,
@@ -123,6 +138,22 @@ export async function updateCustomer(
   }
 
   const values = parsed.data;
+
+  // Check if another customer with this phone number already exists in the workspace
+  const { data: existingCustomer } = await supabase
+    .from("customers")
+    .select("id, first_name, last_name")
+    .eq("workspace_id", workspaceId)
+    .eq("phone", values.phone)
+    .neq("id", customerId)
+    .maybeSingle();
+
+  if (existingCustomer) {
+    return {
+      message: `Another customer with this phone number already exists: ${existingCustomer.first_name} ${existingCustomer.last_name}`,
+      success: false,
+    };
+  }
 
   const { error: customerError } = await supabase
     .from("customers")
@@ -233,7 +264,7 @@ export async function getCustomerDetails(
   const { data: sales } = await supabase
     .from("sales")
     .select(
-      "id, invoice_number, total, paid_amount, remaining_amount, sale_date, payment_status",
+      "id, invoice_number, total, paid_amount, remaining_amount, sale_date, payment_status, status",
     )
     .eq("workspace_id", workspaceId)
     .eq("customer_id", customerId)
@@ -266,14 +297,14 @@ export async function getCustomerDetails(
   const { data: payments } = await supabase
     .from("payments")
     .select(
-      "id, amount, payment_method, payment_date, notes, created_at, reference_type, reference_id",
+      "id, amount, payment_method, payment_date, sale_id, reference_number, notes, created_at",
     )
     .eq("workspace_id", workspaceId)
-    .eq("reference_type", "customer")
-    .eq("reference_id", customerId)
+    .eq("customer_id", customerId)
+    .is("deleted_at", null)
     .order("payment_date", { ascending: false });
 
-  // Get ledger entries
+  // Get ledger entries (ascending for running balance)
   const { data: ledger } = await supabase
     .from("customer_ledger")
     .select("*")
@@ -281,38 +312,81 @@ export async function getCustomerDetails(
     .eq("customer_id", customerId)
     .order("transaction_date", { ascending: true });
 
-  // Calculate financial summary
-  const totalPurchases =
+  // Build a sale-id → invoice_number lookup
+  const saleMap = new Map((sales ?? []).map((s) => [s.id, s.invoice_number]));
+
+  // Calculate financial summary (sales-first architecture)
+  const totalSales =
     sales?.reduce((sum, sale) => sum + Number(sale.total), 0) ?? 0;
-  const totalPaid =
-    payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
-  const remainingBalance = totalPurchases - totalPaid;
-  const pendingAmount =
-    sales
-      ?.filter(
-        (sale) =>
-          sale.payment_status === "pending" ||
-          sale.payment_status === "partial",
-      )
-      .reduce((sum, sale) => sum + Number(sale.remaining_amount), 0) ?? 0;
-  const totalOrders = sales?.length ?? 0;
-  const lastPurchaseDate = sales?.[0]?.sale_date ?? null;
-  const lastPaymentDate = payments?.[0]?.payment_date ?? null;
+  const totalPayments =
+    payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+  const diff = totalPayments - totalSales;
+  const outstandingBalance = diff < 0 ? Math.abs(diff) : 0;
+  const advanceBalance = diff > 0 ? diff : 0;
+
+  // Shape invoices
+  const invoices = (sales ?? []).map((sale) => ({
+    id: sale.id,
+    invoiceNumber: sale.invoice_number,
+    saleDate: sale.sale_date,
+    items: (saleItems ?? [])
+      .filter((i) => i.sale_id === sale.id)
+      .map((i) => ({ productName: i.product_name, quantity: i.quantity })),
+    total: Number(sale.total),
+    paidAmount: Number(sale.paid_amount),
+    remainingAmount: Number(sale.remaining_amount),
+    status: (sale.status ?? sale.payment_status ?? "pending") as
+      | "pending"
+      | "partially_paid"
+      | "paid"
+      | "cancelled",
+  }));
+
+  // Shape payments — no product fields
+  const paymentHistory = (payments ?? []).map((p) => ({
+    id: p.id,
+    receiptNumber: p.reference_number ?? null,
+    paymentDate: p.payment_date,
+    amount: Number(p.amount),
+    paymentMethod: p.payment_method,
+    saleId: p.sale_id ?? null,
+    invoiceNumber: p.sale_id ? (saleMap.get(p.sale_id) ?? null) : null,
+  }));
+
+  // Shape ledger entries
+  const ledgerEntries = (ledger ?? []).map((entry) => {
+    const rawType = entry.transaction_type?.toUpperCase() ?? "";
+    const type = (["SALE", "PAYMENT", "ADVANCE", "REFUND", "ADJUSTMENT"] as const).includes(
+      rawType as "SALE" | "PAYMENT" | "ADVANCE" | "REFUND" | "ADJUSTMENT",
+    )
+      ? (rawType as "SALE" | "PAYMENT" | "ADVANCE" | "REFUND" | "ADJUSTMENT")
+      : "ADJUSTMENT";
+    return {
+      id: entry.id,
+      date: entry.transaction_date,
+      type,
+      reference: entry.description,
+      description: entry.description,
+      debit: Number(entry.debit),
+      credit: Number(entry.credit),
+      balance: Number(entry.balance),
+    };
+  });
 
   return {
     customer,
-    sales: sales ?? [],
-    saleItems: saleItems ?? [],
-    payments: payments ?? [],
-    ledger: ledger ?? [],
+    invoices,
+    paymentHistory,
+    ledger: ledgerEntries,
     summary: {
-      totalPurchases,
-      totalPaid,
-      remainingBalance,
-      pendingAmount,
-      totalOrders,
-      lastPurchaseDate,
-      lastPaymentDate,
+      totalSales,
+      totalPayments,
+      outstandingBalance,
+      advanceBalance,
+      totalInvoices: invoices.length,
+      totalPaymentsReceived: paymentHistory.length,
+      lastSaleDate: sales?.[0]?.sale_date ?? null,
+      lastPaymentDate: payments?.[0]?.payment_date ?? null,
     },
     currency,
     currencySymbol,

@@ -221,6 +221,15 @@ CREATE POLICY "Users can create payments in their workspaces"
     ON payments FOR INSERT
     WITH CHECK (has_workspace_access(workspace_id));
 
+CREATE POLICY "Users can update payments in their workspaces"
+    ON payments FOR UPDATE
+    USING (has_workspace_access(workspace_id))
+    WITH CHECK (has_workspace_access(workspace_id));
+
+CREATE POLICY "Users can delete payments in their workspaces"
+    ON payments FOR DELETE
+    USING (has_workspace_access(workspace_id));
+
 -- Customer ledger policies
 CREATE POLICY "Users can view customer ledger in their workspaces"
     ON customer_ledger FOR SELECT
@@ -228,6 +237,11 @@ CREATE POLICY "Users can view customer ledger in their workspaces"
 
 CREATE POLICY "Users can create customer ledger entries in their workspaces"
     ON customer_ledger FOR INSERT
+    WITH CHECK (has_workspace_access(workspace_id));
+
+CREATE POLICY "Users can update customer ledger in their workspaces"
+    ON customer_ledger FOR UPDATE
+    USING (has_workspace_access(workspace_id))
     WITH CHECK (has_workspace_access(workspace_id));
 
 -- Supplier ledger policies

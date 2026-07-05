@@ -1,9 +1,33 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
-import { Plus, ImageIcon, Boxes } from "lucide-react";
+import {
+  Plus,
+  ImageIcon,
+  Boxes,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/confirm-dialog";
+import { deleteProduct } from "@/actions/product";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -28,12 +52,40 @@ interface ProductsClientProps {
     lowStockCount: number;
     inventoryValue: number;
   };
+  workspaceId: string;
 }
 
 export default function ProductsClient({
   products,
   categoryNames,
+  stats,
+  workspaceId,
 }: ProductsClientProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { success, error } = useToast();
+
+  async function handleDelete() {
+    if (!productToDelete) return;
+    setDeleting(true);
+    try {
+      const result = await deleteProduct(workspaceId, productToDelete);
+      if (result.success) {
+        success(result.message);
+        window.location.reload();
+      } else {
+        error(result.message);
+      }
+    } catch {
+      error("Failed to delete product");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
+    }
+  }
+
   const columns = [
     {
       key: "name" as const,
@@ -51,7 +103,7 @@ export default function ProductsClient({
               <ImageIcon className="h-4 w-4 text-gray-400" />
             </div>
           )}
-          <span className="font-medium text-gray-900">{value}</span>
+          <span className="font-medium text-white">{value}</span>
         </div>
       ),
     },
@@ -105,6 +157,45 @@ export default function ProductsClient({
         );
       },
     },
+    {
+      key: "id" as const,
+      label: "Actions",
+      sortable: false,
+      render: (_value: string, row: Product) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-gray-300 hover:text-white hover:bg-gray-700"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/products/${row.id}/edit`}
+                className="flex items-center gap-2"
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-400 focus:text-red-300"
+              onClick={() => {
+                setProductToDelete(row.id);
+                setDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
   ];
 
   return (
@@ -122,6 +213,33 @@ export default function ProductsClient({
             Add product
           </Link>
         </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Active Products</p>
+          <p className="text-2xl font-bold text-gray-100">
+            {stats.activeProducts}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Categories</p>
+          <p className="text-2xl font-bold text-gray-100">
+            {stats.totalCategories}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Low Stock</p>
+          <p className="text-2xl font-bold text-yellow-400">
+            {stats.lowStockCount}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+          <p className="text-sm text-gray-400">Inventory Value</p>
+          <p className="text-2xl font-bold text-gray-100">
+            Rs {stats.inventoryValue.toLocaleString()}
+          </p>
+        </div>
       </div>
 
       <div className="rounded-lg border border-gray-700 bg-gray-800">
@@ -158,6 +276,34 @@ export default function ProductsClient({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this product? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -15,7 +15,6 @@ export default async function CustomerDetailsPage({
   if (!workspaceId) redirect("/create-workspace");
 
   const { customerId } = await params;
-
   const result = await getCustomerDetails(workspaceId, customerId);
 
   if (!result.customer || result.error) {
@@ -29,9 +28,7 @@ export default async function CustomerDetailsPage({
           <h1 className="text-3xl font-bold text-gray-100">
             {result.customer.first_name} {result.customer.last_name}
           </h1>
-          <p className="text-gray-400">
-            Customer details and transaction history
-          </p>
+          <p className="text-gray-400">Customer details and transaction history</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild>
@@ -52,20 +49,11 @@ export default async function CustomerDetailsPage({
       </div>
 
       <CustomerDetailsClient
+        workspaceId={workspaceId}
         customer={result.customer}
-        sales={result.sales}
-        saleItems={result.saleItems}
-        payments={result.payments}
-        ledger={result.ledger.map((entry: any) => ({
-          id: entry.id,
-          transaction_type: entry.transaction_type,
-          reference_type: entry.reference_type,
-          date: entry.transaction_date,
-          description: entry.description,
-          debit: entry.debit,
-          credit: entry.credit,
-          balance: entry.balance,
-        }))}
+        invoices={result.invoices}
+        payments={result.paymentHistory}
+        ledger={result.ledger}
         summary={result.summary}
         currency={result.currency}
         currencySymbol={result.currencySymbol}

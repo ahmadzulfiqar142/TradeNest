@@ -38,6 +38,7 @@ const menuItems = [
   { name: "Products", href: "/products", icon: Package },
   { name: "Inventory", href: "/inventory", icon: Warehouse },
   { name: "Customers", href: "/customers", icon: Users },
+  { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Suppliers", href: "/suppliers", icon: UserCircle },
   { name: "Sales", href: "/sales", icon: ShoppingCart },
   { name: "Purchases", href: "/purchases", icon: Receipt },

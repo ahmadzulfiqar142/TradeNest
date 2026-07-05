@@ -170,16 +170,17 @@ export interface Database {
           purchase_price: number;
           selling_price: number;
           wholesale_price: number | null;
-          unit: string | null;
           stock_quantity: number;
           min_stock_quantity: number | null;
           batch_number: string | null;
           expiry_date: string | null;
+          track_inventory: boolean | null;
           is_active: boolean | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
           updated_by: string | null;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
@@ -193,16 +194,17 @@ export interface Database {
           purchase_price?: number;
           selling_price?: number;
           wholesale_price?: number | null;
-          unit?: string | null;
           stock_quantity?: number;
           min_stock_quantity?: number | null;
           batch_number?: string | null;
           expiry_date?: string | null;
+          track_inventory?: boolean | null;
           is_active?: boolean | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
+          deleted_at?: string | null;
         };
         Update: {
           category_id?: string | null;
@@ -214,14 +216,15 @@ export interface Database {
           purchase_price?: number;
           selling_price?: number;
           wholesale_price?: number | null;
-          unit?: string | null;
           stock_quantity?: number;
           min_stock_quantity?: number | null;
           batch_number?: string | null;
           expiry_date?: string | null;
+          track_inventory?: boolean | null;
           is_active?: boolean | null;
           updated_at?: string;
           updated_by?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -359,6 +362,7 @@ export interface Database {
           paid_amount: number;
           remaining_amount: number;
           payment_status: string;
+          status: "pending" | "partially_paid" | "paid" | "cancelled";
           notes: string | null;
           sale_date: string;
           created_at: string;
@@ -379,6 +383,7 @@ export interface Database {
           paid_amount?: number;
           remaining_amount?: number;
           payment_status?: string;
+          status?: "pending" | "partially_paid" | "paid" | "cancelled";
           notes?: string | null;
           sale_date?: string;
           created_at?: string;
@@ -397,6 +402,7 @@ export interface Database {
           paid_amount?: number;
           remaining_amount?: number;
           payment_status?: string;
+          status?: "pending" | "partially_paid" | "paid" | "cancelled";
           notes?: string | null;
           sale_date?: string;
           updated_at?: string;
@@ -482,34 +488,42 @@ export interface Database {
         Row: {
           id: string;
           workspace_id: string;
-          reference_type: string;
-          reference_id: string;
+          customer_id: string;
+          sale_id: string | null;
           amount: number;
           payment_method: string;
           payment_date: string;
+          reference_number: string | null;
           notes: string | null;
-          created_at: string;
           created_by: string | null;
+          created_at: string;
+          updated_at: string;
+          deleted_at: string | null;
         };
         Insert: {
           id?: string;
           workspace_id: string;
-          reference_type: string;
-          reference_id: string;
+          customer_id: string;
+          sale_id?: string | null;
           amount: number;
           payment_method: string;
           payment_date?: string;
+          reference_number?: string | null;
           notes?: string | null;
-          created_at?: string;
           created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          deleted_at?: string | null;
         };
         Update: {
-          reference_type?: string;
-          reference_id?: string;
+          customer_id?: string;
+          sale_id?: string | null;
           amount?: number;
           payment_method?: string;
           payment_date?: string;
+          reference_number?: string | null;
           notes?: string | null;
+          deleted_at?: string | null;
         };
         Relationships: [
           {
@@ -517,6 +531,20 @@ export interface Database {
             columns: ["workspace_id"];
             isOneToOne: false;
             referencedRelation: "workspaces";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_customer_id_fkey";
+            columns: ["customer_id"];
+            isOneToOne: false;
+            referencedRelation: "customers";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_sale_id_fkey";
+            columns: ["sale_id"];
+            isOneToOne: false;
+            referencedRelation: "sales";
             referencedColumns: ["id"];
           },
         ];
@@ -585,9 +613,7 @@ export interface Database {
     };
     Functions: {
       get_dashboard_stats: {
-        Args: {
-          p_workspace_id: string;
-        };
+        Args: { p_workspace_id: string };
         Returns: {
           today_sales: number;
           today_purchases: number;
@@ -600,6 +626,19 @@ export interface Database {
           total_products: number;
           inventory_value: number;
         };
+      };
+      update_customer_ledger: {
+        Args: {
+          p_customer_id: string;
+          p_workspace_id: string;
+          p_transaction_type: string;
+          p_reference_type: string;
+          p_reference_id: string;
+          p_debit?: number;
+          p_credit?: number;
+          p_description?: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

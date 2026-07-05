@@ -35,11 +35,11 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
               style={{ backgroundImage: `url(${row.image_url})` }}
             />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-[#F9FAFB]">
-              <ImageIcon className="h-4 w-4 text-[#9CA3AF]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted">
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
-          <span className="font-medium text-[#111827]">{value as string}</span>
+          <span className="font-medium text-foreground">{value as string}</span>
         </div>
       ),
     },
@@ -50,7 +50,7 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
         const categoryName = value
           ? (categoryNames[value as string] ?? "Unknown")
           : "Uncategorized";
-        return <span className="text-[#6B7280]">{categoryName}</span>;
+        return <span className="text-muted-foreground">{categoryName}</span>;
       },
     },
     {
@@ -58,8 +58,8 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
       label: "Stock",
       render: (value, row) => (
         <div>
-          <div className="font-medium text-[#111827]">{value as number}</div>
-          <div className="text-xs text-[#9CA3AF]">
+          <div className="font-medium text-foreground">{value as number}</div>
+          <div className="text-xs text-muted-foreground">
             Min {row.min_stock_quantity ?? 0}
           </div>
         </div>
@@ -69,14 +69,18 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
       key: "purchase_price",
       label: "Cost",
       render: (value) => (
-        <span className="text-[#6B7280]">Rs {Number(value).toFixed(2)}</span>
+        <span className="text-muted-foreground">
+          Rs {Number(value).toFixed(2)}
+        </span>
       ),
     },
     {
       key: "selling_price",
       label: "Price",
       render: (value) => (
-        <span className="text-[#6B7280]">Rs {Number(value).toFixed(2)}</span>
+        <span className="text-muted-foreground">
+          Rs {Number(value).toFixed(2)}
+        </span>
       ),
     },
     {
@@ -90,8 +94,8 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
           <span
             className={
               isLowStock
-                ? "inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700"
-                : "inline-flex rounded-full bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700"
+                ? "inline-flex rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive"
+                : "inline-flex rounded-full bg-green-500/10 px-2.5 py-1 text-xs font-semibold text-green-500"
             }
           >
             {isLowStock ? "Low stock" : "In stock"}
@@ -117,14 +121,14 @@ export function ProductsTable({ products, categoryNames }: ProductsTableProps) {
 
   if (products.length === 0) {
     return (
-      <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed text-center">
-        <div className="rounded-full bg-blue-50 p-3">
-          <Boxes className="h-6 w-6 text-blue-600" />
+      <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-border text-center">
+        <div className="rounded-full bg-primary/10 p-3">
+          <Boxes className="h-6 w-6 text-primary" />
         </div>
-        <h2 className="mt-4 text-base font-semibold text-[#111827]">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           No products yet
         </h2>
-        <p className="mt-1 max-w-sm text-sm text-[#6B7280]">
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
           Add your first product with opening stock to start building inventory
           history.
         </p>
