@@ -28,8 +28,10 @@ export interface PaymentsClientProps {
   payments: PaymentWithCustomer[];
   workspaceId: string;
   customers: Customer[];
+  openSales?: { id: string; invoice_number: string; total: number; status: string }[];
   searchParams: {
     customerId?: string;
+    saleId?: string;
     paymentMethod?: string;
     startDate?: string;
     endDate?: string;

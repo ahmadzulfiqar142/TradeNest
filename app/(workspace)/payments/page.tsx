@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 interface PaymentsPageProps {
   searchParams: Promise<{
     customerId?: string;
+    saleId?: string;
     paymentMethod?: string;
     startDate?: string;
     endDate?: string;
@@ -44,6 +45,19 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
       .order("first_name", { ascending: true }),
   ]);
 
+  // If coming from a sale detail page, fetch open sales for that customer
+  let openSales: { id: string; invoice_number: string; total: number; status: string }[] = [];
+  if (params.customerId) {
+    const { data } = await supabase
+      .from("sales")
+      .select("id, invoice_number, total, status")
+      .eq("workspace_id", workspaceId)
+      .eq("customer_id", params.customerId)
+      .in("status", ["pending", "partially_paid"])
+      .order("sale_date", { ascending: false });
+    openSales = data ?? [];
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -58,6 +72,7 @@ export default async function PaymentsPage({ searchParams }: PaymentsPageProps) 
           payments={paymentsResult.payments ?? []}
           customers={customers ?? []}
           workspaceId={workspaceId}
+          openSales={openSales}
           searchParams={params}
         />
       </Suspense>

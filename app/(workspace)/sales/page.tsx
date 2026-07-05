@@ -36,7 +36,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         <h1 className="text-3xl font-bold text-foreground">Sales</h1>
         <p className="text-muted-foreground mt-1">Create and manage sales invoices</p>
       </div>
-      <SalesTable sales={sales as any} workspaceId={workspaceId} />
+      <SalesTable sales={sales} workspaceId={workspaceId} />
     </div>
   );
 }

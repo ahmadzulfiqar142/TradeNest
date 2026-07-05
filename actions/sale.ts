@@ -114,7 +114,6 @@ export async function createSale(
       total,
       paid_amount: paidAmount,
       remaining_amount: total - paidAmount,
-      payment_status: status,
       status,
       notes: v.notes ?? null,
       sale_date: v.saleDate,

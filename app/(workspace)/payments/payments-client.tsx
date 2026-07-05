@@ -1,99 +1,80 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, Filter, Download, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { PaymentForm } from "@/features/payments/components/payment-form";
 import { deletePayment } from "@/actions/payment";
-import { PaymentWithCustomer, PaymentsClientProps } from "@/types/payments";
+import type { PaymentWithCustomer, PaymentsClientProps } from "@/types/payments";
 
 export function PaymentsClient({
   payments,
   workspaceId,
   customers,
+  openSales = [],
   searchParams,
 }: PaymentsClientProps) {
-  const typedPayments = payments as PaymentWithCustomer[];
   const router = useRouter();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<any | null>(null);
-  const [searchQuery, setSearchQuery] = useState(searchParams.search || "");
+
+  // Auto-open form if coming from a sale detail page (saleId in URL)
+  const [showAddForm, setShowAddForm] = useState(!!searchParams.saleId);
+  const [editingPayment, setEditingPayment] = useState<PaymentWithCustomer | null>(null);
+  const [searchQuery, setSearchQuery] = useState(searchParams.search ?? "");
   const [showFilters, setShowFilters] = useState(false);
 
-  const filteredPayments = useMemo(() => {
-    return typedPayments.filter((payment) => {
-      if (
-        searchParams.customerId &&
-        payment.customer_id !== searchParams.customerId
-      )
-        return false;
-      if (
-        searchParams.paymentMethod &&
-        payment.payment_method !== searchParams.paymentMethod
-      )
-        return false;
-      if (
-        searchParams.startDate &&
-        payment.payment_date < searchParams.startDate
-      )
-        return false;
-      if (searchParams.endDate && payment.payment_date > searchParams.endDate)
-        return false;
+  const filtered = useMemo(() => {
+    return (payments as PaymentWithCustomer[]).filter((p) => {
+      if (searchParams.customerId && p.customer_id !== searchParams.customerId) return false;
+      if (searchParams.paymentMethod && p.payment_method !== searchParams.paymentMethod) return false;
+      if (searchParams.startDate && p.payment_date < searchParams.startDate) return false;
+      if (searchParams.endDate && p.payment_date > searchParams.endDate) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const name = p.customers
+          ? `${p.customers.first_name} ${p.customers.last_name}`.toLowerCase()
+          : "";
+        return name.includes(q) || (p.reference_number ?? "").toLowerCase().includes(q);
+      }
       return true;
     });
-  }, [typedPayments, searchParams]);
+  }, [payments, searchParams, searchQuery]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  function pushParam(key: string, value: string) {
     const params = new URLSearchParams(window.location.search);
-    if (searchQuery) {
-      params.set("search", searchQuery);
-    } else {
-      params.delete("search");
-    }
+    value ? params.set(key, value) : params.delete(key);
     router.push(`/payments?${params.toString()}`);
-  };
+  }
 
-  const handlePaymentSuccess = async () => {
+  async function handleDelete(paymentId: string) {
+    if (!confirm("Delete this payment?")) return;
+    const result = await deletePayment(workspaceId, paymentId);
+    if (result.success) router.refresh();
+    else alert(result.message);
+  }
+
+  function handleSuccess() {
     setShowAddForm(false);
     setEditingPayment(null);
     router.refresh();
-  };
-
-  const handleDeletePayment = async (paymentId: string) => {
-    if (!confirm("Are you sure you want to delete this payment?")) {
-      return;
-    }
-
-    const result = await deletePayment(workspaceId, paymentId);
-
-    if (result.success) {
-      router.refresh();
-    } else {
-      alert(result.message || "Failed to delete payment");
-    }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      {/* Actions Bar */}
+      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
+        <form
+          onSubmit={(e) => { e.preventDefault(); pushParam("search", searchQuery); }}
+          className="flex gap-2 flex-1 max-w-md"
+        >
           <Input
-            type="search"
-            placeholder="Search payments..."
+            placeholder="Search customer, reference..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1"
@@ -102,156 +83,87 @@ export function PaymentsClient({
             <Search className="h-4 w-4" />
           </Button>
         </form>
-
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-          >
+          <Button variant="secondary" onClick={() => setShowFilters((v) => !v)}>
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
-          <Button onClick={() => setShowAddForm(true)}>
+          <Button onClick={() => { setEditingPayment(null); setShowAddForm((v) => !v); }}>
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
           </Button>
         </div>
       </div>
 
-      {/* Filters Panel */}
+      {/* Filters */}
       {showFilters && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 pb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Customer
-                </label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Customer</label>
                 <select
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
-                  onChange={(e) => {
-                    const params = new URLSearchParams(window.location.search);
-                    if (e.target.value) {
-                      params.set("customerId", e.target.value);
-                    } else {
-                      params.delete("customerId");
-                    }
-                    router.push(`/payments?${params.toString()}`);
-                  }}
-                  value={searchParams.customerId || ""}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                  value={searchParams.customerId ?? ""}
+                  onChange={(e) => pushParam("customerId", e.target.value)}
                 >
                   <option value="">All Customers</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.first_name} {customer.last_name}
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.first_name} {c.last_name}
                     </option>
                   ))}
                 </select>
               </div>
-
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Payment Method
-                </label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">Method</label>
                 <select
-                  className="w-full px-4 py-2 border border-border rounded-lg bg-background text-foreground"
-                  onChange={(e) => {
-                    const params = new URLSearchParams(window.location.search);
-                    if (e.target.value) {
-                      params.set("paymentMethod", e.target.value);
-                    } else {
-                      params.delete("paymentMethod");
-                    }
-                    router.push(`/payments?${params.toString()}`);
-                  }}
-                  value={searchParams.paymentMethod || ""}
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm"
+                  value={searchParams.paymentMethod ?? ""}
+                  onChange={(e) => pushParam("paymentMethod", e.target.value)}
                 >
                   <option value="">All Methods</option>
-                  <option value="cash">Cash</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="jazzcash">JazzCash</option>
-                  <option value="easypaisa">EasyPaisa</option>
-                  <option value="credit_card">Credit Card</option>
-                  <option value="debit_card">Debit Card</option>
-                  <option value="cheque">Cheque</option>
-                  <option value="other">Other</option>
+                  {["cash","bank_transfer","jazzcash","easypaisa","credit_card","debit_card","cheque","other"].map((m) => (
+                    <option key={m} value={m}>{m.replace(/_/g, " ")}</option>
+                  ))}
                 </select>
               </div>
-
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Start Date
-                </label>
-                <Input
-                  type="date"
-                  value={searchParams.startDate || ""}
-                  onChange={(e) => {
-                    const params = new URLSearchParams(window.location.search);
-                    if (e.target.value) {
-                      params.set("startDate", e.target.value);
-                    } else {
-                      params.delete("startDate");
-                    }
-                    router.push(`/payments?${params.toString()}`);
-                  }}
-                />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">From</label>
+                <Input type="date" value={searchParams.startDate ?? ""} onChange={(e) => pushParam("startDate", e.target.value)} />
               </div>
-
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  End Date
-                </label>
-                <Input
-                  type="date"
-                  value={searchParams.endDate || ""}
-                  onChange={(e) => {
-                    const params = new URLSearchParams(window.location.search);
-                    if (e.target.value) {
-                      params.set("endDate", e.target.value);
-                    } else {
-                      params.delete("endDate");
-                    }
-                    router.push(`/payments?${params.toString()}`);
-                  }}
-                />
+                <label className="text-xs font-medium text-muted-foreground block mb-1">To</label>
+                <Input type="date" value={searchParams.endDate ?? ""} onChange={(e) => pushParam("endDate", e.target.value)} />
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Add/Edit Payment Form */}
+      {/* Add / Edit form */}
       {(showAddForm || editingPayment) && (
-        <Card>
-          <CardContent className="pt-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">
-              {editingPayment ? "Edit Payment" : "Add New Payment"}
-            </h2>
-            <PaymentForm
-              workspaceId={workspaceId}
-              customers={customers}
-              mode={editingPayment ? "edit" : "create"}
-              payment={editingPayment || undefined}
-              onSuccess={handlePaymentSuccess}
-            />
-          </CardContent>
-        </Card>
+        <PaymentForm
+          workspaceId={workspaceId}
+          customers={customers}
+          openSales={openSales}
+          preselectedSaleId={searchParams.saleId ?? null}
+          mode={editingPayment ? "edit" : "create"}
+          payment={editingPayment ?? undefined}
+          onSuccess={handleSuccess}
+        />
       )}
 
-      {/* Payments Table */}
+      {/* Table */}
       <Card>
         <CardContent className="pt-6">
-          {filteredPayments.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No payments found</p>
               {!showAddForm && (
-                <Button
-                  onClick={() => setShowAddForm(true)}
-                  className="mt-4"
-                  variant="secondary"
-                >
+                <Button onClick={() => setShowAddForm(true)} className="mt-4" variant="secondary">
                   <Plus className="h-4 w-4 mr-2" />
-                  Add your first payment
+                  Add first payment
                 </Button>
               )}
             </div>
@@ -260,62 +172,49 @@ export function PaymentsClient({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Payment ID</TableHead>
+                    <TableHead>Ref</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Payment Date</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Payment Method</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Method</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredPayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-sm">
-                        <Link
-                          href={`/payments/${payment.id}`}
-                          className="hover:text-primary transition-colors"
-                        >
-                          {payment.id.slice(0, 8).toUpperCase()}
-                        </Link>
+                  {filtered.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {p.reference_number ?? p.id.slice(0, 8).toUpperCase()}
                       </TableCell>
-                      <TableCell className="font-medium">
+                      <TableCell>
                         <Link
-                          href={`/customers/${payment.customer_id}`}
-                          className="hover:text-primary transition-colors"
+                          href={`/customers/${p.customer_id}`}
+                          className="font-medium hover:text-primary transition-colors"
                         >
-                          {payment.customers
-                            ? `${payment.customers.first_name} ${payment.customers.last_name}`
+                          {p.customers
+                            ? `${p.customers.first_name} ${p.customers.last_name}`
                             : "Unknown"}
                         </Link>
                       </TableCell>
-                      <TableCell>
-                        {new Date(payment.payment_date).toLocaleDateString()}
+                      <TableCell className="text-sm">
+                        {new Date(p.payment_date).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="font-semibold">
-                        ${Number(payment.amount).toLocaleString()}
+                      <TableCell className="capitalize text-sm">
+                        {p.payment_method.replace(/_/g, " ")}
                       </TableCell>
-                      <TableCell>
-                        {payment.reference_number ? (
-                          <span className="font-mono text-xs text-muted-foreground">{payment.reference_number}</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                      <TableCell className="text-right font-semibold text-green-600 dark:text-green-400">
+                        Rs. {Number(p.amount).toLocaleString()}
                       </TableCell>
-                      <TableCell className="capitalize">
-                        {payment.payment_method.replace(/_/g, " ")}
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {payment.notes || "-"}
+                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                        {p.notes ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setEditingPayment(payment)}
+                            onClick={() => { setEditingPayment(p); setShowAddForm(false); }}
                           >
                             Edit
                           </Button>
@@ -323,7 +222,7 @@ export function PaymentsClient({
                             variant="ghost"
                             size="sm"
                             className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeletePayment(payment.id)}
+                            onClick={() => handleDelete(p.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

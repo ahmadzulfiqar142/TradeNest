@@ -65,16 +65,24 @@ async function updateSaleStatus(
     0,
   );
 
+  const saleTotal = Number(sale.total);
+  const paidAmount = Math.min(totalPaid, saleTotal);
+  const remainingAmount = Math.max(0, saleTotal - totalPaid);
+
   const status =
     totalPaid <= 0
       ? "pending"
-      : totalPaid >= Number(sale.total)
+      : totalPaid >= saleTotal
         ? "paid"
         : "partially_paid";
 
   await supabase
     .from("sales")
-    .update({ status })
+    .update({
+      status,
+      paid_amount: paidAmount,
+      remaining_amount: remainingAmount,
+    })
     .eq("id", saleId)
     .eq("workspace_id", workspaceId);
 }
@@ -255,10 +263,10 @@ export async function deletePayment(
 
   if (deleteError) return { message: deleteError.message, success: false };
 
-  // Nullify ledger entry amount
+  // Remove the ledger entry for this payment entirely
   await supabase
     .from("customer_ledger")
-    .update({ debit: 0, description: "Payment deleted" })
+    .delete()
     .eq("reference_type", "payment")
     .eq("reference_id", paymentId)
     .eq("workspace_id", workspaceId);

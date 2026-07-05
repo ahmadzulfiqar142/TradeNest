@@ -33,6 +33,7 @@ type PaymentFormProps = {
   };
   customers: { id: string; first_name: string; last_name: string; phone: string }[];
   openSales?: OpenSale[];
+  preselectedSaleId?: string | null;
   onSuccess?: () => void;
 };
 
@@ -49,6 +50,7 @@ export function PaymentForm({
   payment,
   customers,
   openSales = [],
+  preselectedSaleId,
   onSuccess,
 }: PaymentFormProps) {
   const router = useRouter();
@@ -70,7 +72,7 @@ export function PaymentForm({
     resolver: zodResolver(createPaymentSchema),
     defaultValues: {
       customerId: payment?.customer_id ?? "",
-      saleId: payment?.sale_id ?? null,
+      saleId: payment?.sale_id ?? preselectedSaleId ?? null,
       amount: payment?.amount ?? 0,
       paymentMethod: payment?.payment_method ?? "",
       paymentDate: payment?.payment_date ?? new Date().toISOString().split("T")[0],

@@ -172,7 +172,9 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
             <h2 className="text-base font-semibold text-foreground">Payments</h2>
             {outstanding > 0 && sale.status !== "cancelled" && sale.customers && (
               <Button asChild size="sm">
-                <Link href={`/payments?customerId=${sale.customers.id}&saleId=${saleId}`}>
+                <Link
+                  href={`/payments?customerId=${sale.customers.id}&saleId=${saleId}`}
+                >
                   Record Payment
                 </Link>
               </Button>

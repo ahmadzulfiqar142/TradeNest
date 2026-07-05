@@ -49,6 +49,7 @@ export default async function CustomerDetailsPage({
       </div>
 
       <CustomerDetailsClient
+        workspaceId={workspaceId}
         customer={result.customer}
         invoices={result.invoices}
         payments={result.paymentHistory}
