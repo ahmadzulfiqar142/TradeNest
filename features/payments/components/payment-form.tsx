@@ -15,8 +15,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { PAYMENT_METHODS, createPaymentSchema } from "@/schemas/payment";
 import type { CreatePaymentFormValues } from "@/schemas/payment";
+import { useToast } from "@/hooks/use-toast";
 
-type OpenSale = { id: string; invoice_number: string; total: number; status: string };
+type OpenSale = {
+  id: string;
+  invoice_number: string;
+  total: number;
+  status: string;
+};
 
 type PaymentFormProps = {
   workspaceId: string;
@@ -31,7 +37,12 @@ type PaymentFormProps = {
     reference_number: string | null;
     notes: string | null;
   };
-  customers: { id: string; first_name: string; last_name: string; phone: string }[];
+  customers: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
+  }[];
   openSales?: OpenSale[];
   preselectedSaleId?: string | null;
   onSuccess?: () => void;
@@ -60,7 +71,11 @@ export function PaymentForm({
       ? updatePayment.bind(null, workspaceId, payment.id)
       : createPayment.bind(null, workspaceId);
 
-  const [state, formAction, pending] = useActionState(paymentAction, initialState);
+  const [state, formAction, pending] = useActionState(
+    paymentAction,
+    initialState,
+  );
+  const { success, error } = useToast();
 
   const {
     register,
@@ -75,18 +90,24 @@ export function PaymentForm({
       saleId: payment?.sale_id ?? preselectedSaleId ?? null,
       amount: payment?.amount ?? 0,
       paymentMethod: payment?.payment_method ?? "",
-      paymentDate: payment?.payment_date ?? new Date().toISOString().split("T")[0],
+      paymentDate:
+        payment?.payment_date ?? new Date().toISOString().split("T")[0],
       referenceNumber: payment?.reference_number ?? null,
       notes: payment?.notes ?? null,
     },
   });
 
   useEffect(() => {
-    if (state.success) {
-      onSuccess?.();
-      if (mode === "create") router.refresh();
+    if (state.message) {
+      if (state.success) {
+        success(state.message);
+        onSuccess?.();
+        if (mode === "create") router.refresh();
+      } else {
+        error(state.message);
+      }
     }
-  }, [state.success, onSuccess, mode, router]);
+  }, [state, success, error, onSuccess, mode, router]);
 
   const onSubmit = (data: CreatePaymentFormValues) => {
     const formData = new FormData();
@@ -95,7 +116,8 @@ export function PaymentForm({
     formData.append("paymentMethod", data.paymentMethod);
     formData.append("paymentDate", data.paymentDate);
     if (data.saleId) formData.append("saleId", data.saleId);
-    if (data.referenceNumber) formData.append("referenceNumber", data.referenceNumber);
+    if (data.referenceNumber)
+      formData.append("referenceNumber", data.referenceNumber);
     if (data.notes) formData.append("notes", data.notes);
     formAction(formData);
   };
@@ -123,8 +145,14 @@ export function PaymentForm({
             {/* Link to Sale (optional) */}
             {openSales.length > 0 && (
               <div className="flex flex-col gap-2">
-                <label htmlFor="saleId" className="text-sm font-medium text-foreground">
-                  Link to Invoice <span className="text-muted-foreground text-xs">(optional)</span>
+                <label
+                  htmlFor="saleId"
+                  className="text-sm font-medium text-foreground"
+                >
+                  Link to Invoice{" "}
+                  <span className="text-muted-foreground text-xs">
+                    (optional)
+                  </span>
                 </label>
                 <select
                   id="saleId"
@@ -134,7 +162,8 @@ export function PaymentForm({
                   <option value="">Advance / Unlinked Payment</option>
                   {openSales.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.invoice_number} — Rs. {Number(s.total).toLocaleString()} ({s.status})
+                      {s.invoice_number} — Rs.{" "}
+                      {Number(s.total).toLocaleString()} ({s.status})
                     </option>
                   ))}
                 </select>
@@ -143,7 +172,10 @@ export function PaymentForm({
 
             {/* Amount */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="amount" className="text-sm font-medium text-foreground">
+              <label
+                htmlFor="amount"
+                className="text-sm font-medium text-foreground"
+              >
                 Amount <span className="text-red-400">*</span>
               </label>
               <input
@@ -162,7 +194,10 @@ export function PaymentForm({
 
             {/* Payment Method */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="paymentMethod" className="text-sm font-medium text-foreground">
+              <label
+                htmlFor="paymentMethod"
+                className="text-sm font-medium text-foreground"
+              >
                 Payment Method <span className="text-red-400">*</span>
               </label>
               <select
@@ -178,13 +213,18 @@ export function PaymentForm({
                 ))}
               </select>
               {errors.paymentMethod && (
-                <p className="text-xs text-red-400">{errors.paymentMethod.message}</p>
+                <p className="text-xs text-red-400">
+                  {errors.paymentMethod.message}
+                </p>
               )}
             </div>
 
             {/* Payment Date */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="paymentDate" className="text-sm font-medium text-foreground">
+              <label
+                htmlFor="paymentDate"
+                className="text-sm font-medium text-foreground"
+              >
                 Payment Date <span className="text-red-400">*</span>
               </label>
               <input
@@ -194,14 +234,22 @@ export function PaymentForm({
                 className={inputClass(!!errors.paymentDate)}
               />
               {errors.paymentDate && (
-                <p className="text-xs text-red-400">{errors.paymentDate.message}</p>
+                <p className="text-xs text-red-400">
+                  {errors.paymentDate.message}
+                </p>
               )}
             </div>
 
             {/* Reference Number */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="referenceNumber" className="text-sm font-medium text-foreground">
-                Reference Number <span className="text-muted-foreground text-xs">(optional)</span>
+              <label
+                htmlFor="referenceNumber"
+                className="text-sm font-medium text-foreground"
+              >
+                Reference Number{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional)
+                </span>
               </label>
               <input
                 type="text"
@@ -214,8 +262,14 @@ export function PaymentForm({
 
             {/* Notes */}
             <div className="flex flex-col gap-2 md:col-span-2">
-              <label htmlFor="notes" className="text-sm font-medium text-foreground">
-                Notes <span className="text-muted-foreground text-xs">(optional)</span>
+              <label
+                htmlFor="notes"
+                className="text-sm font-medium text-foreground"
+              >
+                Notes{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional)
+                </span>
               </label>
               <input
                 type="text"

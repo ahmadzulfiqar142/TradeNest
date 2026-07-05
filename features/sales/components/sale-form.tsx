@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { PAYMENT_METHODS } from "@/schemas/payment";
+import { useToast } from "@/hooks/use-toast";
 
 type Product = {
   id: string;
@@ -37,6 +38,7 @@ type LineItem = {
   unitPrice: number;
   discount: number;
   total: number;
+  unit?: string | null;
 };
 
 type SaleFormProps = {
@@ -55,6 +57,7 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
   const action = createSale.bind(null, workspaceId);
   const [state, formAction] = useActionState(action, initialState);
   const [pending, startTransition] = useTransition();
+  const { success, error } = useToast();
 
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [saleDate, setSaleDate] = useState(
@@ -76,10 +79,17 @@ export function SaleForm({ workspaceId, products, customers }: SaleFormProps) {
   ]);
 
   useEffect(() => {
-    if (state.success && state.saleId) {
-      router.push(`/sales/${state.saleId}`);
+    if (state.message) {
+      if (state.success) {
+        success(state.message);
+        if (state.saleId) {
+          router.push(`/sales/${state.saleId}`);
+        }
+      } else {
+        error(state.message);
+      }
     }
-  }, [state.success, state.saleId, router]);
+  }, [state, success, error, router]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.total, 0),

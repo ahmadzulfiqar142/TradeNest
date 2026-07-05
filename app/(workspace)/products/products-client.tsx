@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/confirm-dialog";
 import { deleteProduct } from "@/actions/product";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
@@ -62,17 +63,27 @@ export default function ProductsClient({
 }: ProductsClientProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { success, error } = useToast();
 
   async function handleDelete() {
     if (!productToDelete) return;
-    const result = await deleteProduct(workspaceId, productToDelete);
-    if (result.success) {
-      window.location.reload();
-    } else {
-      alert(result.message);
+    setDeleting(true);
+    try {
+      const result = await deleteProduct(workspaceId, productToDelete);
+      if (result.success) {
+        success(result.message);
+        window.location.reload();
+      } else {
+        error(result.message);
+      }
+    } catch {
+      error("Failed to delete product");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
     }
-    setDeleteDialogOpen(false);
-    setProductToDelete(null);
   }
 
   const columns = [
@@ -283,8 +294,12 @@ export default function ProductsClient({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

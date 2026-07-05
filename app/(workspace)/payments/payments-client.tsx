@@ -42,6 +42,7 @@ import type {
   PaymentWithCustomer,
   PaymentsClientProps,
 } from "@/types/payments";
+import { useToast } from "@/hooks/use-toast";
 
 export function PaymentsClient({
   payments,
@@ -94,17 +95,27 @@ export function PaymentsClient({
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const { success, error } = useToast();
 
   async function handleDelete() {
     if (!paymentToDelete) return;
-    const result = await deletePayment(workspaceId, paymentToDelete);
-    if (result.success) {
-      router.refresh();
-    } else {
-      alert(result.message);
+    setDeleting(true);
+    try {
+      const result = await deletePayment(workspaceId, paymentToDelete);
+      if (result.success) {
+        success(result.message);
+        router.refresh();
+      } else {
+        error(result.message);
+      }
+    } catch {
+      error("Failed to delete payment");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setPaymentToDelete(null);
     }
-    setDeleteDialogOpen(false);
-    setPaymentToDelete(null);
   }
 
   function handleSuccess() {
@@ -356,8 +367,12 @@ export function PaymentsClient({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { Plus, Save } from "lucide-react";
 import {
   createCustomer,
@@ -9,6 +9,7 @@ import {
 } from "@/actions/customer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 type CreateCustomerFormProps = {
   workspaceId: string;
@@ -43,7 +44,18 @@ export function CreateCustomerForm({
     customerAction,
     initialCustomerActionState,
   );
+  const { success, error } = useToast();
   const isEditMode = mode === "edit";
+
+  useEffect(() => {
+    if (state.message) {
+      if (state.success) {
+        success(state.message);
+      } else {
+        error(state.message);
+      }
+    }
+  }, [state, success, error]);
 
   // Split full name into first and last for the form
   const firstName = customer?.first_name ?? "";

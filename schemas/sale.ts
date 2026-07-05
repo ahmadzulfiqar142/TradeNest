@@ -7,6 +7,7 @@ export const saleItemSchema = z.object({
   unitPrice: z.number().min(0, "Price must be 0 or more"),
   discount: z.number().min(0).max(100).default(0),
   total: z.number().min(0),
+  unit: z.string().nullable().optional(),
 });
 
 export const createSaleSchema = z.object({

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useEffect } from "react";
 import { ImageIcon, Plus, Save, Upload } from "lucide-react";
 import {
   createProduct,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type CategoryOption = {
   id: string;
@@ -35,7 +36,8 @@ type CreateProductFormProps = {
     stock_quantity: number;
     expiry_date: string | null;
     is_active: boolean | null;
-  };};
+  };
+};
 
 const initialProductActionState: ProductActionState = {
   message: "",
@@ -92,7 +94,18 @@ export function CreateProductForm({
     productAction,
     initialProductActionState,
   );
+  const { success, error } = useToast();
   const isEditMode = mode === "edit";
+
+  useEffect(() => {
+    if (state.message) {
+      if (state.success) {
+        success(state.message);
+      } else {
+        error(state.message);
+      }
+    }
+  }, [state, success, error]);
 
   async function handleImageUpload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -354,21 +367,19 @@ export function CreateProductForm({
           />
         </div>
 
-        {isEditMode && (
-          <div className="space-y-2 flex items-center gap-3">
-            <input
-              id="isActive"
-              name="isActive"
-              type="checkbox"
-              defaultChecked={product?.is_active ?? true}
-              value="true"
-              className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600"
-            />
-            <Label htmlFor="isActive" className="text-gray-300 cursor-pointer">
-              Active
-            </Label>
-          </div>
-        )}
+        <div className="space-y-2 flex items-center gap-3">
+          <input
+            id="isActive"
+            name="isActive"
+            type="checkbox"
+            defaultChecked={product?.is_active ?? true}
+            value="true"
+            className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+          />
+          <Label htmlFor="isActive" className="text-gray-300 cursor-pointer">
+            Active
+          </Label>
+        </div>
       </div>
 
       {state.message ? (

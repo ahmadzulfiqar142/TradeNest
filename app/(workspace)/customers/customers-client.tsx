@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/confirm-dialog";
 import { deleteCustomer, archiveCustomer } from "@/actions/customer";
+import { useToast } from "@/hooks/use-toast";
 
 interface Customer {
   id: string;
@@ -44,17 +45,45 @@ export default function CustomersClient({
 }: CustomersClientProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const { success, error } = useToast();
 
   async function handleDelete() {
     if (!customerToDelete) return;
-    const result = await deleteCustomer(workspaceId, customerToDelete);
-    if (result.success) {
-      window.location.reload();
-    } else {
-      alert(result.message);
+    setDeleting(true);
+    try {
+      const result = await deleteCustomer(workspaceId, customerToDelete);
+      if (result.success) {
+        success(result.message);
+        window.location.reload();
+      } else {
+        error(result.message);
+      }
+    } catch {
+      error("Failed to delete customer");
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setCustomerToDelete(null);
     }
-    setDeleteDialogOpen(false);
-    setCustomerToDelete(null);
+  }
+
+  async function handleArchive(customerId: string) {
+    setArchiving(true);
+    try {
+      const result = await archiveCustomer(workspaceId, customerId);
+      if (result.success) {
+        success(result.message);
+        window.location.reload();
+      } else {
+        error(result.message);
+      }
+    } catch {
+      error("Failed to archive customer");
+    } finally {
+      setArchiving(false);
+    }
   }
 
   const columns = [
@@ -147,13 +176,11 @@ export default function CustomersClient({
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={async () => {
-                await archiveCustomer(workspaceId, value);
-                window.location.reload();
-              }}
+              onClick={() => handleArchive(value)}
+              disabled={archiving}
             >
               <Archive className="h-4 w-4" />
-              Archive
+              {archiving ? "Archiving..." : "Archive"}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-red-400 focus:text-red-300"
@@ -241,8 +268,12 @@ export default function CustomersClient({
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete}>
-              Delete
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
