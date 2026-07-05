@@ -39,6 +39,46 @@ async function getAuthorizedUser(workspaceId: string) {
   return { supabase, user, error: null };
 }
 
+async function updateSaleStatus(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  saleId: string,
+  workspaceId: string,
+) {
+  const { data: sale } = await supabase
+    .from("sales")
+    .select("total")
+    .eq("id", saleId)
+    .eq("workspace_id", workspaceId)
+    .single();
+
+  if (!sale) return;
+
+  const { data: payments } = await supabase
+    .from("payments")
+    .select("amount")
+    .eq("sale_id", saleId)
+    .eq("workspace_id", workspaceId)
+    .is("deleted_at", null);
+
+  const totalPaid = (payments ?? []).reduce(
+    (sum, p) => sum + Number(p.amount),
+    0,
+  );
+
+  const status =
+    totalPaid <= 0
+      ? "pending"
+      : totalPaid >= Number(sale.total)
+        ? "paid"
+        : "partially_paid";
+
+  await supabase
+    .from("sales")
+    .update({ status })
+    .eq("id", saleId)
+    .eq("workspace_id", workspaceId);
+}
+
 export async function createPayment(
   workspaceId: string,
   _previousState: PaymentActionState,
@@ -46,109 +86,65 @@ export async function createPayment(
 ): Promise<PaymentActionState> {
   const parsed = createPaymentSchema.safeParse({
     customerId: formData.get("customerId")?.toString() || "",
+    saleId: formData.get("saleId")?.toString() || null,
     amount: parseFloat(formData.get("amount")?.toString() || "0"),
     paymentMethod: formData.get("paymentMethod")?.toString() || "",
     paymentDate: formData.get("paymentDate")?.toString() || "",
-    paymentStatus: formData.get("paymentStatus")?.toString() || "pending",
-    productId: formData.get("productId")?.toString() || null,
-    quantity: parseInt(formData.get("quantity")?.toString() || "1"),
+    referenceNumber: formData.get("referenceNumber")?.toString() || null,
+    notes: formData.get("notes")?.toString() || null,
   });
 
   if (!parsed.success) {
     return {
-      message:
-        parsed.error.issues[0]?.message ??
-        "Check the payment details and try again.",
+      message: parsed.error.issues[0]?.message ?? "Check the details and try again.",
       success: false,
     };
   }
 
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-  if (error || !user)
-    return { message: error ?? "Unauthorized", success: false };
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
 
-  const values = parsed.data;
-
-  const { data: customer } = await supabase
-    .from("customers")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("id", values.customerId)
-    .single();
-
-  if (!customer) return { message: "Customer not found", success: false };
-
-  // Build notes from product if selected
-  let notes: string | undefined;
-  if (values.productId && values.quantity) {
-    const { data: product } = await supabase
-      .from("products")
-      .select("name, selling_price")
-      .eq("id", values.productId)
-      .eq("workspace_id", workspaceId)
-      .single();
-    if (product) {
-      notes = `Product: ${product.name} (Qty: ${values.quantity} x Rs.${Number(product.selling_price).toFixed(2)})`;
-    }
-  }
+  const v = parsed.data;
 
   const { data: newPayment, error: paymentError } = await supabase
     .from("payments")
     .insert({
       workspace_id: workspaceId,
-      customer_id: values.customerId,
-      amount: values.amount,
-      payment_method: values.paymentMethod,
-      payment_date: values.paymentDate,
-      payment_status: values.paymentStatus,
-      notes,
+      customer_id: v.customerId,
+      sale_id: v.saleId ?? null,
+      amount: v.amount,
+      payment_method: v.paymentMethod,
+      payment_date: v.paymentDate,
+      reference_number: v.referenceNumber ?? null,
+      notes: v.notes ?? null,
       created_by: user.id,
     })
     .select("id")
     .single();
 
   if (paymentError || !newPayment) {
-    return {
-      message: paymentError?.message || "Failed to create payment",
-      success: false,
-    };
+    return { message: paymentError?.message || "Failed to create payment", success: false };
   }
 
-  // Calculate running balance for ledger
-  const { data: existingPayments } = await supabase
-    .from("payments")
-    .select("amount, deleted_at")
-    .eq("workspace_id", workspaceId)
-    .eq("customer_id", values.customerId)
-    .neq("id", newPayment.id);
-
-  // Filter out deleted payments client-side if column exists
-  const filteredExistingPayments =
-    existingPayments?.filter(
-      (p) => p.deleted_at === null || p.deleted_at === undefined,
-    ) || [];
-
-  const totalPaid = filteredExistingPayments.reduce(
-    (sum, p) => sum + Number(p.amount),
-    0,
-  );
-
-  await supabase.from("customer_ledger").insert({
-    workspace_id: workspaceId,
-    customer_id: values.customerId,
-    transaction_type: "payment",
-    reference_type: "payment",
-    reference_id: newPayment.id,
-    debit: 0,
-    credit: values.amount,
-    balance: -(totalPaid + values.amount),
-    description: "Payment received",
-    transaction_date: values.paymentDate,
-    created_by: user.id,
+  // Ledger: debit = money received from customer
+  await supabase.rpc("update_customer_ledger", {
+    p_customer_id: v.customerId,
+    p_workspace_id: workspaceId,
+    p_transaction_type: "payment",
+    p_reference_type: "payment",
+    p_reference_id: newPayment.id,
+    p_debit: v.amount,
+    p_credit: 0,
+    p_description: v.saleId ? "Payment received for invoice" : "Advance payment received",
   });
 
+  // Update sale status if linked to a sale
+  if (v.saleId) {
+    await updateSaleStatus(supabase, v.saleId, workspaceId);
+  }
+
   revalidatePath("/payments");
-  revalidatePath(`/customers/${values.customerId}`);
+  revalidatePath(`/customers/${v.customerId}`);
   revalidatePath("/");
 
   return { message: "Payment created successfully", success: true };
@@ -162,101 +158,73 @@ export async function updatePayment(
 ): Promise<PaymentActionState> {
   const parsed = updatePaymentSchema.safeParse({
     customerId: formData.get("customerId")?.toString() || "",
+    saleId: formData.get("saleId")?.toString() || null,
     amount: parseFloat(formData.get("amount")?.toString() || "0"),
     paymentMethod: formData.get("paymentMethod")?.toString() || "",
     paymentDate: formData.get("paymentDate")?.toString() || "",
-    paymentStatus: formData.get("paymentStatus")?.toString() || "pending",
-    productId: formData.get("productId")?.toString() || null,
-    quantity: parseInt(formData.get("quantity")?.toString() || "1"),
+    referenceNumber: formData.get("referenceNumber")?.toString() || null,
+    notes: formData.get("notes")?.toString() || null,
   });
 
   if (!parsed.success) {
     return {
-      message:
-        parsed.error.issues[0]?.message ??
-        "Check the payment details and try again.",
+      message: parsed.error.issues[0]?.message ?? "Check the details and try again.",
       success: false,
     };
   }
 
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-  if (error || !user)
-    return { message: error ?? "Unauthorized", success: false };
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
 
-  const values = parsed.data;
+  const v = parsed.data;
 
-  const { data: existingPayment } = await supabase
+  const { data: existing } = await supabase
     .from("payments")
-    .select("id, customer_id")
+    .select("id, sale_id")
     .eq("id", paymentId)
     .eq("workspace_id", workspaceId)
     .is("deleted_at", null)
     .single();
 
-  if (!existingPayment) return { message: "Payment not found", success: false };
+  if (!existing) return { message: "Payment not found", success: false };
 
-  // Build notes from product if selected
-  let notes: string | undefined;
-  if (values.productId && values.quantity) {
-    const { data: product } = await supabase
-      .from("products")
-      .select("name, selling_price")
-      .eq("id", values.productId)
-      .eq("workspace_id", workspaceId)
-      .single();
-    if (product) {
-      notes = `Product: ${product.name} (Qty: ${values.quantity} x Rs.${Number(product.selling_price).toFixed(2)})`;
-    }
-  }
-
-  const { error: paymentError } = await supabase
+  const { error: updateError } = await supabase
     .from("payments")
     .update({
-      customer_id: values.customerId,
-      amount: values.amount,
-      payment_method: values.paymentMethod,
-      payment_date: values.paymentDate,
-      payment_status: values.paymentStatus,
-      notes,
+      customer_id: v.customerId,
+      sale_id: v.saleId ?? null,
+      amount: v.amount,
+      payment_method: v.paymentMethod,
+      payment_date: v.paymentDate,
+      reference_number: v.referenceNumber ?? null,
+      notes: v.notes ?? null,
     })
     .eq("id", paymentId)
     .eq("workspace_id", workspaceId);
 
-  if (paymentError) return { message: paymentError.message, success: false };
+  if (updateError) return { message: updateError.message, success: false };
 
-  // Recalculate running balance for ledger
-  const { data: otherPayments } = await supabase
-    .from("payments")
-    .select("amount, deleted_at")
-    .eq("workspace_id", workspaceId)
-    .eq("customer_id", values.customerId)
-    .neq("id", paymentId);
-
-  // Filter out deleted payments client-side if column exists
-  const filteredOtherPayments =
-    otherPayments?.filter(
-      (p) => p.deleted_at === null || p.deleted_at === undefined,
-    ) || [];
-
-  const totalPaid = filteredOtherPayments.reduce(
-    (sum, p) => sum + Number(p.amount),
-    0,
-  );
-
+  // Update ledger entry
   await supabase
     .from("customer_ledger")
     .update({
-      credit: values.amount,
-      balance: -(totalPaid + values.amount),
-      description: "Payment updated",
+      debit: v.amount,
+      credit: 0,
+      description: v.saleId ? "Payment received for invoice" : "Advance payment received",
     })
     .eq("reference_type", "payment")
     .eq("reference_id", paymentId)
     .eq("workspace_id", workspaceId);
 
+  // Update sale status for old and new sale_id
+  const saleIds = [existing.sale_id, v.saleId].filter(Boolean) as string[];
+  for (const saleId of [...new Set(saleIds)]) {
+    await updateSaleStatus(supabase, saleId, workspaceId);
+  }
+
   revalidatePath("/payments");
   revalidatePath(`/payments/${paymentId}`);
-  revalidatePath(`/customers/${values.customerId}`);
+  revalidatePath(`/customers/${v.customerId}`);
   revalidatePath("/");
 
   return { message: "Payment updated successfully", success: true };
@@ -267,110 +235,43 @@ export async function deletePayment(
   paymentId: string,
 ): Promise<PaymentActionState> {
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
 
-  if (error || !user) {
-    return { message: error ?? "Unauthorized", success: false };
-  }
-
-  // Get existing payment
-  const { data: existingPayment, error: fetchError } = await supabase
+  const { data: existing } = await supabase
     .from("payments")
-    .select("*")
+    .select("customer_id, sale_id")
     .eq("id", paymentId)
     .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
     .single();
 
-  // Filter out deleted payments client-side if column exists
-  const filteredPayment =
-    existingPayment &&
-    (existingPayment.deleted_at === null ||
-      existingPayment.deleted_at === undefined)
-      ? existingPayment
-      : null;
+  if (!existing) return { message: "Payment not found", success: false };
 
-  if (fetchError || !filteredPayment) {
-    return { message: "Payment not found", success: false };
-  }
+  const { error: deleteError } = await supabase
+    .from("payments")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", paymentId)
+    .eq("workspace_id", workspaceId);
 
-  // Soft delete payment (only if column exists)
-  let deleteError = null;
-  try {
-    const result = await supabase
-      .from("payments")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", paymentId)
-      .eq("workspace_id", workspaceId);
-    deleteError = result.error;
-  } catch (error) {
-    // Column doesn't exist, skip soft delete
-    console.warn("deleted_at column not found, skipping soft delete");
-  }
+  if (deleteError) return { message: deleteError.message, success: false };
 
-  if (deleteError) {
-    return { message: deleteError.message, success: false };
-  }
-
-  // Reverse ledger entry
-  const { error: ledgerError } = await supabase
+  // Nullify ledger entry amount
+  await supabase
     .from("customer_ledger")
-    .update({
-      credit: 0,
-      description: `Payment deleted`,
-    })
+    .update({ debit: 0, description: "Payment deleted" })
     .eq("reference_type", "payment")
     .eq("reference_id", paymentId)
     .eq("workspace_id", workspaceId);
 
-  if (ledgerError) {
-    console.error("Failed to reverse ledger entry:", ledgerError);
+  if (existing.sale_id) {
+    await updateSaleStatus(supabase, existing.sale_id, workspaceId);
   }
 
   revalidatePath("/payments");
-  revalidatePath(`/customers/${filteredPayment.customer_id}`);
+  revalidatePath(`/customers/${existing.customer_id}`);
   revalidatePath("/");
 
   return { message: "Payment deleted successfully", success: true };
-}
-
-export async function getPaymentDetails(
-  workspaceId: string,
-  paymentId: string,
-) {
-  const supabase = await createClient();
-
-  const { data: payment, error: paymentError } = await supabase
-    .from("payments")
-    .select(
-      `
-      *,
-      customers (
-        id,
-        first_name,
-        last_name,
-        phone
-      ),
-      products (
-        id,
-        name,
-        selling_price
-      )
-    `,
-    )
-    .eq("id", paymentId)
-    .eq("workspace_id", workspaceId)
-    .single();
-
-  // Filter out deleted payments client-side if column exists
-  const filteredPaymentData =
-    payment && (payment.deleted_at === null || payment.deleted_at === undefined)
-      ? payment
-      : null;
-
-  if (paymentError || !filteredPaymentData) {
-    return { payment: null, error: "Payment not found" };
-  }
-
-  return { payment: filteredPaymentData, error: null };
 }
 
 export async function getPayments(
@@ -387,81 +288,19 @@ export async function getPayments(
 
   let query = supabase
     .from("payments")
-    .select(
-      `
-      *,
-      customers (
-        id,
-        first_name,
-        last_name,
-        phone
-      )
-    `,
-    )
+    .select(`*, customers(id, first_name, last_name, phone)`)
     .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
     .order("payment_date", { ascending: false });
 
-  // Try to filter by deleted_at if the column exists
-  // First, test if the column exists by making a test query
-  const { data: testData, error: testError } = await supabase
-    .from("payments")
-    .select("deleted_at")
-    .limit(1);
-
-  const hasDeletedAtColumn =
-    !testError || !testError.message.includes("deleted_at");
-
-  if (hasDeletedAtColumn) {
-    query = query.is("deleted_at", null);
-  } else {
-    console.warn("deleted_at column not found, skipping soft delete filter");
-  }
-
-  if (options?.customerId) {
-    query = query.eq("customer_id", options.customerId);
-  }
-
-  if (options?.paymentMethod) {
-    query = query.eq("payment_method", options.paymentMethod);
-  }
-
-  if (options?.startDate) {
-    query = query.gte("payment_date", options.startDate);
-  }
-
-  if (options?.endDate) {
-    query = query.lte("payment_date", options.endDate);
-  }
-
-  if (options?.search) {
-    const searchTerm = `%${options.search}%`;
-    query = query.or(
-      `notes.ilike.${searchTerm},customers.first_name.ilike.${searchTerm},customers.last_name.ilike.${searchTerm},customers.phone.ilike.${searchTerm},id.ilike.${searchTerm}`,
-    );
-  }
+  if (options?.customerId) query = query.eq("customer_id", options.customerId);
+  if (options?.paymentMethod) query = query.eq("payment_method", options.paymentMethod);
+  if (options?.startDate) query = query.gte("payment_date", options.startDate);
+  if (options?.endDate) query = query.lte("payment_date", options.endDate);
 
   const { data: payments, error } = await query;
 
-  // Debug logging
-  console.log("getPayments query result:", {
-    workspaceId,
-    options,
-    count: payments?.length || 0,
-    error: error?.message,
-    firstPayment: payments?.[0]
-      ? {
-          id: payments[0].id,
-          customer_id: payments[0].customer_id,
-          amount: payments[0].amount,
-          customers: payments[0].customers,
-        }
-      : null,
-  });
-
-  if (error) {
-    return { payments: [], error: error.message };
-  }
-
+  if (error) return { payments: [], error: error.message };
   return { payments: payments ?? [], error: null };
 }
 
@@ -472,49 +311,42 @@ export async function getCustomersForPayment(workspaceId: string) {
     .from("customers")
     .select("id, first_name, last_name, phone")
     .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
     .order("first_name", { ascending: true });
 
-  if (error) {
-    return { customers: [], error: error.message };
-  }
-
+  if (error) return { customers: [], error: error.message };
   return { customers: customers ?? [], error: null };
 }
 
-export async function getProductsForPayment(workspaceId: string) {
-  const supabase = await createClient();
-
-  const { data: products, error } = await supabase
-    .from("products")
-    .select("id, name, selling_price, stock_quantity, unit")
-    .eq("workspace_id", workspaceId)
-    .eq("is_active", true)
-    .order("name", { ascending: true });
-
-  if (error) {
-    return { products: [], error: error.message };
-  }
-
-  return { products: products ?? [], error: null };
-}
-
-export async function getInvoicesForCustomer(
+export async function getOpenSalesForCustomer(
   workspaceId: string,
   customerId: string,
 ) {
   const supabase = await createClient();
 
-  const { data: invoices, error } = await supabase
+  const { data: sales, error } = await supabase
     .from("sales")
-    .select("id, invoice_number, total, remaining_amount, payment_status")
+    .select("id, invoice_number, total, status")
     .eq("workspace_id", workspaceId)
     .eq("customer_id", customerId)
-    .in("payment_status", ["pending", "partial"])
+    .in("status", ["pending", "partially_paid"])
     .order("sale_date", { ascending: false });
 
-  if (error) {
-    return { invoices: [], error: error.message };
-  }
+  if (error) return { sales: [], error: error.message };
+  return { sales: sales ?? [], error: null };
+}
 
-  return { invoices: invoices ?? [], error: null };
+export async function getPaymentDetails(workspaceId: string, paymentId: string) {
+  const supabase = await createClient();
+
+  const { data: payment, error } = await supabase
+    .from("payments")
+    .select(`*, customers(id, first_name, last_name, phone)`)
+    .eq("id", paymentId)
+    .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
+    .single();
+
+  if (error || !payment) return { payment: null, error: "Payment not found" };
+  return { payment, error: null };
 }

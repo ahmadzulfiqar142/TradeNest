@@ -1,3 +1,5 @@
+export type SaleStatus = "pending" | "partially_paid" | "paid" | "cancelled";
+
 export interface Customer {
   id: string;
   first_name: string;
@@ -9,13 +11,11 @@ export interface PaymentWithCustomer {
   id: string;
   workspace_id: string;
   customer_id: string;
-  invoice_id: string | null;
-  product_id: string | null;
-  quantity: number | null;
+  sale_id: string | null;
   amount: number;
   payment_method: string;
   payment_date: string;
-  payment_status: string;
+  reference_number: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
@@ -28,13 +28,6 @@ export interface PaymentsClientProps {
   payments: PaymentWithCustomer[];
   workspaceId: string;
   customers: Customer[];
-  products: {
-    id: string;
-    name: string;
-    selling_price: number;
-    stock_quantity: number;
-    unit: string | null;
-  }[];
   searchParams: {
     customerId?: string;
     paymentMethod?: string;

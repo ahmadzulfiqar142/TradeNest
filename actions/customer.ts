@@ -297,7 +297,7 @@ export async function getCustomerDetails(
   const { data: payments } = await supabase
     .from("payments")
     .select(
-      "id, amount, payment_method, payment_date, payment_status, notes, created_at",
+      "id, amount, payment_method, payment_date, sale_id, reference_number, notes, created_at",
     )
     .eq("workspace_id", workspaceId)
     .eq("customer_id", customerId)
@@ -312,33 +312,16 @@ export async function getCustomerDetails(
     .eq("customer_id", customerId)
     .order("transaction_date", { ascending: true });
 
-  // Calculate financial summary
+  // Calculate financial summary using sales-first architecture
+  // Balance = Total Payments - Total Sales (positive = advance, negative = outstanding)
   const totalPurchases =
     sales?.reduce((sum, sale) => sum + Number(sale.total), 0) ?? 0;
 
-  // Paid Amount: Sum of all payments with "paid" status
   const totalPaid =
-    payments
-      ?.filter((payment) => payment.payment_status === "paid")
-      .reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
+    payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
 
-  // Remaining Amount: Sum of pending sales + pending payments
-  const pendingFromSales =
-    sales
-      ?.filter(
-        (sale) =>
-          sale.payment_status === "pending" ||
-          sale.payment_status === "partial",
-      )
-      .reduce((sum, sale) => sum + Number(sale.remaining_amount), 0) ?? 0;
-
-  const pendingFromPayments =
-    payments
-      ?.filter((payment) => payment.payment_status === "pending")
-      .reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
-
-  const remainingBalance = pendingFromSales + pendingFromPayments;
-  const pendingAmount = pendingFromSales + pendingFromPayments;
+  const remainingBalance = totalPaid - totalPurchases;
+  const pendingAmount = remainingBalance < 0 ? Math.abs(remainingBalance) : 0;
   const totalOrders = sales?.length ?? 0;
   const lastPurchaseDate = sales?.[0]?.sale_date ?? null;
   const lastPaymentDate = payments?.[0]?.payment_date ?? null;

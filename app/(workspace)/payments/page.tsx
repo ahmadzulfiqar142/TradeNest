@@ -21,48 +21,28 @@ interface PaymentsPageProps {
   }>;
 }
 
-export default async function PaymentsPage({
-  searchParams,
-}: PaymentsPageProps) {
+export default async function PaymentsPage({ searchParams }: PaymentsPageProps) {
   const supabase = await createClient();
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) redirect("/create-workspace");
 
   const params = await searchParams;
 
-  const [paymentsResult, { data: customers }, { data: products }] =
-    await Promise.all([
-      getPayments(workspaceId, {
-        customerId: params.customerId,
-        paymentMethod: params.paymentMethod,
-        startDate: params.startDate,
-        endDate: params.endDate,
-        search: params.search,
-      }),
-      supabase
-        .from("customers")
-        .select("id, first_name, last_name, phone")
-        .eq("workspace_id", workspaceId)
-        .is("deleted_at", null)
-        .order("first_name", { ascending: true }),
-      supabase
-        .from("products")
-        .select("id, name, selling_price, stock_quantity, unit")
-        .eq("workspace_id", workspaceId)
-        .eq("is_active", true)
-        .order("name", { ascending: true }),
-    ]);
-
-  // Debug logging
-  if (paymentsResult.error) {
-    console.error("Error fetching payments:", paymentsResult.error);
-  }
-  console.log("Payments result:", {
-    count: paymentsResult.payments?.length || 0,
-    error: paymentsResult.error,
-    workspaceId,
-    searchParams: params,
-  });
+  const [paymentsResult, { data: customers }] = await Promise.all([
+    getPayments(workspaceId, {
+      customerId: params.customerId,
+      paymentMethod: params.paymentMethod,
+      startDate: params.startDate,
+      endDate: params.endDate,
+      search: params.search,
+    }),
+    supabase
+      .from("customers")
+      .select("id, first_name, last_name, phone")
+      .eq("workspace_id", workspaceId)
+      .is("deleted_at", null)
+      .order("first_name", { ascending: true }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -77,7 +57,6 @@ export default async function PaymentsPage({
         <PaymentsClient
           payments={paymentsResult.payments ?? []}
           customers={customers ?? []}
-          products={products ?? []}
           workspaceId={workspaceId}
           searchParams={params}
         />

@@ -359,6 +359,7 @@ export interface Database {
           paid_amount: number;
           remaining_amount: number;
           payment_status: string;
+          status: "pending" | "partially_paid" | "paid" | "cancelled";
           notes: string | null;
           sale_date: string;
           created_at: string;
@@ -379,6 +380,7 @@ export interface Database {
           paid_amount?: number;
           remaining_amount?: number;
           payment_status?: string;
+          status?: "pending" | "partially_paid" | "paid" | "cancelled";
           notes?: string | null;
           sale_date?: string;
           created_at?: string;
@@ -397,6 +399,7 @@ export interface Database {
           paid_amount?: number;
           remaining_amount?: number;
           payment_status?: string;
+          status?: "pending" | "partially_paid" | "paid" | "cancelled";
           notes?: string | null;
           sale_date?: string;
           updated_at?: string;
@@ -483,13 +486,11 @@ export interface Database {
           id: string;
           workspace_id: string;
           customer_id: string;
-          invoice_id: string | null;
-          product_id: string | null;
-          quantity: number | null;
+          sale_id: string | null;
           amount: number;
           payment_method: string;
           payment_date: string;
-          payment_status: string;
+          reference_number: string | null;
           notes: string | null;
           created_by: string | null;
           created_at: string;
@@ -500,13 +501,11 @@ export interface Database {
           id?: string;
           workspace_id: string;
           customer_id: string;
-          invoice_id?: string | null;
-          product_id?: string | null;
-          quantity?: number | null;
+          sale_id?: string | null;
           amount: number;
           payment_method: string;
           payment_date?: string;
-          payment_status?: string;
+          reference_number?: string | null;
           notes?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -515,13 +514,11 @@ export interface Database {
         };
         Update: {
           customer_id?: string;
-          invoice_id?: string | null;
-          product_id?: string | null;
-          quantity?: number | null;
+          sale_id?: string | null;
           amount?: number;
           payment_method?: string;
           payment_date?: string;
-          payment_status?: string;
+          reference_number?: string | null;
           notes?: string | null;
           deleted_at?: string | null;
         };
@@ -541,17 +538,10 @@ export interface Database {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "payments_invoice_id_fkey";
-            columns: ["invoice_id"];
+            foreignKeyName: "payments_sale_id_fkey";
+            columns: ["sale_id"];
             isOneToOne: false;
             referencedRelation: "sales";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "payments_product_id_fkey";
-            columns: ["product_id"];
-            isOneToOne: false;
-            referencedRelation: "products";
             referencedColumns: ["id"];
           },
         ];
@@ -620,9 +610,7 @@ export interface Database {
     };
     Functions: {
       get_dashboard_stats: {
-        Args: {
-          p_workspace_id: string;
-        };
+        Args: { p_workspace_id: string };
         Returns: {
           today_sales: number;
           today_purchases: number;
@@ -635,6 +623,19 @@ export interface Database {
           total_products: number;
           inventory_value: number;
         };
+      };
+      update_customer_ledger: {
+        Args: {
+          p_customer_id: string;
+          p_workspace_id: string;
+          p_transaction_type: string;
+          p_reference_type: string;
+          p_reference_id: string;
+          p_debit?: number;
+          p_credit?: number;
+          p_description?: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

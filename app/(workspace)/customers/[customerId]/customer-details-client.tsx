@@ -53,13 +53,6 @@ interface CustomerDetailsClientProps {
   };
   currency: string;
   currencySymbol: string;
-  products: {
-    id: string;
-    name: string;
-    selling_price: number;
-    stock_quantity: number;
-    unit: string | null;
-  }[];
 }
 
 type Customer = CustomerType;
@@ -76,7 +69,6 @@ export function CustomerDetailsClient({
   ledger,
   summary,
   currencySymbol,
-  products = [],
 }: CustomerDetailsClientProps) {
   const [showAddPayment, setShowAddPayment] = useState(false);
 
@@ -150,7 +142,6 @@ export function CustomerDetailsClient({
               <PaymentForm
                 workspaceId={customer.id}
                 customers={[customer]}
-                products={products}
                 mode="create"
                 onSuccess={() => setShowAddPayment(false)}
               />

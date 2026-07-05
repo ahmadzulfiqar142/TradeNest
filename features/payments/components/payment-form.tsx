@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo } from "react";
+import { useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -13,12 +13,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import {
-  PAYMENT_METHODS,
-  PAYMENT_STATUSES,
-  createPaymentSchema,
-} from "@/schemas/payment";
+import { PAYMENT_METHODS, createPaymentSchema } from "@/schemas/payment";
 import type { CreatePaymentFormValues } from "@/schemas/payment";
+
+type OpenSale = { id: string; invoice_number: string; total: number; status: string };
 
 type PaymentFormProps = {
   workspaceId: string;
@@ -26,29 +24,15 @@ type PaymentFormProps = {
   payment?: {
     id: string;
     customer_id: string;
-    invoice_id: string | null;
-    product_id: string | null;
-    quantity: number | null;
+    sale_id: string | null;
     amount: number;
     payment_method: string;
     payment_date: string;
-    payment_status: "pending" | "paid";
     reference_number: string | null;
     notes: string | null;
   };
-  customers: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    phone: string;
-  }[];
-  products: {
-    id: string;
-    name: string;
-    selling_price: number;
-    stock_quantity: number;
-    unit: string | null;
-  }[];
+  customers: { id: string; first_name: string; last_name: string; phone: string }[];
+  openSales?: OpenSale[];
   onSuccess?: () => void;
 };
 
@@ -64,7 +48,7 @@ export function PaymentForm({
   mode = "create",
   payment,
   customers,
-  products,
+  openSales = [],
   onSuccess,
 }: PaymentFormProps) {
   const router = useRouter();
@@ -74,10 +58,7 @@ export function PaymentForm({
       ? updatePayment.bind(null, workspaceId, payment.id)
       : createPayment.bind(null, workspaceId);
 
-  const [state, formAction, pending] = useActionState(
-    paymentAction,
-    initialState,
-  );
+  const [state, formAction, pending] = useActionState(paymentAction, initialState);
 
   const {
     register,
@@ -89,50 +70,14 @@ export function PaymentForm({
     resolver: zodResolver(createPaymentSchema),
     defaultValues: {
       customerId: payment?.customer_id ?? "",
+      saleId: payment?.sale_id ?? null,
       amount: payment?.amount ?? 0,
       paymentMethod: payment?.payment_method ?? "",
-      paymentDate:
-        payment?.payment_date ?? new Date().toISOString().split("T")[0],
-      paymentStatus: payment?.payment_status ?? "pending",
-      productId: payment?.product_id ?? undefined,
-      quantity: 1, // This will be updated by useEffect when product is loaded
+      paymentDate: payment?.payment_date ?? new Date().toISOString().split("T")[0],
+      referenceNumber: payment?.reference_number ?? null,
+      notes: payment?.notes ?? null,
     },
   });
-
-  // Update quantity when editing a payment with a product
-  useEffect(() => {
-    if (mode === "edit" && payment?.product_id && payment?.quantity) {
-      setValue("productId", payment.product_id);
-      setValue("quantity", payment.quantity);
-      // Recalculate amount based on product price and quantity
-      const product = products.find((p) => p.id === payment.product_id);
-      if (product) {
-        setValue("amount", product.selling_price * payment.quantity);
-      }
-    }
-  }, [mode, payment, products, setValue]);
-
-  const selectedProductId = watch("productId");
-  const quantity = watch("quantity") ?? 1;
-  const paymentStatus = watch("paymentStatus");
-
-  const selectedProduct = useMemo(
-    () => products.find((p) => p.id === selectedProductId),
-    [products, selectedProductId],
-  );
-
-  useEffect(() => {
-    if (selectedProduct && quantity > 0) {
-      setValue("amount", selectedProduct.selling_price * quantity);
-    }
-  }, [selectedProduct, quantity, setValue]);
-
-  const totalAmount = useMemo(() => {
-    if (selectedProduct && quantity > 0) {
-      return selectedProduct.selling_price * quantity;
-    }
-    return watch("amount") || 0;
-  }, [selectedProduct, quantity, watch]);
 
   useEffect(() => {
     if (state.success) {
@@ -147,9 +92,9 @@ export function PaymentForm({
     formData.append("amount", data.amount.toString());
     formData.append("paymentMethod", data.paymentMethod);
     formData.append("paymentDate", data.paymentDate);
-    formData.append("paymentStatus", data.paymentStatus);
-    if (data.productId) formData.append("productId", data.productId);
-    if (data.quantity) formData.append("quantity", data.quantity.toString());
+    if (data.saleId) formData.append("saleId", data.saleId);
+    if (data.referenceNumber) formData.append("referenceNumber", data.referenceNumber);
+    if (data.notes) formData.append("notes", data.notes);
     formAction(formData);
   };
 
@@ -173,31 +118,30 @@ export function PaymentForm({
               error={errors.customerId?.message}
             />
 
-            {/* Product */}
-            <Autocomplete
-              options={products.map((p) => ({
-                id: p.id,
-                label: p.name,
-                subtitle:
-                  `Rs. ${Number(p.selling_price).toLocaleString()} · Stock: ${p.stock_quantity} ${p.unit ?? ""}`.trim(),
-              }))}
-              value={watch("productId") ?? null}
-              onValueChange={(v) => {
-                setValue("productId", v ?? "");
-                setValue("quantity", 1);
-              }}
-              placeholder="Search products..."
-              label="Product"
-              required
-              error={errors.productId?.message}
-            />
+            {/* Link to Sale (optional) */}
+            {openSales.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label htmlFor="saleId" className="text-sm font-medium text-foreground">
+                  Link to Invoice <span className="text-muted-foreground text-xs">(optional)</span>
+                </label>
+                <select
+                  id="saleId"
+                  {...register("saleId")}
+                  className={inputClass()}
+                >
+                  <option value="">Advance / Unlinked Payment</option>
+                  {openSales.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.invoice_number} — Rs. {Number(s.total).toLocaleString()} ({s.status})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Amount */}
             <div className="flex flex-col gap-2">
-              <label
-                htmlFor="amount"
-                className="text-sm font-medium text-foreground"
-              >
+              <label htmlFor="amount" className="text-sm font-medium text-foreground">
                 Amount <span className="text-red-400">*</span>
               </label>
               <input
@@ -209,110 +153,14 @@ export function PaymentForm({
                 placeholder="0.00"
                 className={inputClass(!!errors.amount)}
               />
-              {selectedProduct && quantity > 0 && (
-                <div className="p-3 bg-muted rounded-md space-y-1">
-                  <p className="text-xs text-muted-foreground">
-                    {quantity} × Rs.{" "}
-                    {Number(selectedProduct.selling_price).toLocaleString()} =
-                    Rs.{" "}
-                    <span className="font-semibold text-foreground">
-                      {(
-                        selectedProduct.selling_price * quantity
-                      ).toLocaleString()}
-                    </span>
-                  </p>
-                  <p className="text-xs font-medium text-primary">
-                    Total Amount: Rs. {totalAmount.toLocaleString()}
-                  </p>
-                </div>
-              )}
               {errors.amount && (
                 <p className="text-xs text-red-400">{errors.amount.message}</p>
               )}
             </div>
 
-            {/* Quantity */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="quantity"
-                className="text-sm font-medium text-foreground"
-              >
-                Quantity <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="quantity"
-                {...register("quantity", { valueAsNumber: true })}
-                min="1"
-                max={selectedProduct?.stock_quantity ?? 9999}
-                className={inputClass(!!errors.quantity)}
-              />
-              {selectedProduct && (
-                <p className="text-xs text-muted-foreground">
-                  Available: {selectedProduct.stock_quantity}{" "}
-                  {selectedProduct.unit}
-                </p>
-              )}
-              {errors.quantity && (
-                <p className="text-xs text-red-400">
-                  {errors.quantity.message}
-                </p>
-              )}
-            </div>
-
-            {/* Payment Date */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="paymentDate"
-                className="text-sm font-medium text-foreground"
-              >
-                Payment Date <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="date"
-                id="paymentDate"
-                {...register("paymentDate")}
-                className={inputClass(!!errors.paymentDate)}
-              />
-              {errors.paymentDate && (
-                <p className="text-xs text-red-400">
-                  {errors.paymentDate.message}
-                </p>
-              )}
-            </div>
-
-            {/* Payment Status */}
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="paymentStatus"
-                className="text-sm font-medium text-foreground"
-              >
-                Payment Status <span className="text-red-400">*</span>
-              </label>
-              <select
-                id="paymentStatus"
-                {...register("paymentStatus")}
-                className={inputClass(!!errors.paymentStatus)}
-              >
-                {PAYMENT_STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-              {errors.paymentStatus && (
-                <p className="text-xs text-red-400">
-                  {errors.paymentStatus.message}
-                </p>
-              )}
-            </div>
-
             {/* Payment Method */}
             <div className="flex flex-col gap-2">
-              <label
-                htmlFor="paymentMethod"
-                className="text-sm font-medium text-foreground"
-              >
+              <label htmlFor="paymentMethod" className="text-sm font-medium text-foreground">
                 Payment Method <span className="text-red-400">*</span>
               </label>
               <select
@@ -328,10 +176,52 @@ export function PaymentForm({
                 ))}
               </select>
               {errors.paymentMethod && (
-                <p className="text-xs text-red-400">
-                  {errors.paymentMethod.message}
-                </p>
+                <p className="text-xs text-red-400">{errors.paymentMethod.message}</p>
               )}
+            </div>
+
+            {/* Payment Date */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="paymentDate" className="text-sm font-medium text-foreground">
+                Payment Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="date"
+                id="paymentDate"
+                {...register("paymentDate")}
+                className={inputClass(!!errors.paymentDate)}
+              />
+              {errors.paymentDate && (
+                <p className="text-xs text-red-400">{errors.paymentDate.message}</p>
+              )}
+            </div>
+
+            {/* Reference Number */}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="referenceNumber" className="text-sm font-medium text-foreground">
+                Reference Number <span className="text-muted-foreground text-xs">(optional)</span>
+              </label>
+              <input
+                type="text"
+                id="referenceNumber"
+                {...register("referenceNumber")}
+                placeholder="e.g. TXN-12345"
+                className={inputClass()}
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <label htmlFor="notes" className="text-sm font-medium text-foreground">
+                Notes <span className="text-muted-foreground text-xs">(optional)</span>
+              </label>
+              <input
+                type="text"
+                id="notes"
+                {...register("notes")}
+                placeholder="Any additional notes..."
+                className={inputClass()}
+              />
             </div>
           </div>
 

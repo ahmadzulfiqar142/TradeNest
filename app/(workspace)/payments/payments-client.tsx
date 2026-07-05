@@ -23,7 +23,6 @@ export function PaymentsClient({
   payments,
   workspaceId,
   customers,
-  products,
   searchParams,
 }: PaymentsClientProps) {
   const typedPayments = payments as PaymentWithCustomer[];
@@ -231,7 +230,6 @@ export function PaymentsClient({
             <PaymentForm
               workspaceId={workspaceId}
               customers={customers}
-              products={products}
               mode={editingPayment ? "edit" : "create"}
               payment={editingPayment || undefined}
               onSuccess={handlePaymentSuccess}
@@ -266,7 +264,7 @@ export function PaymentsClient({
                     <TableHead>Customer</TableHead>
                     <TableHead>Payment Date</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Reference</TableHead>
                     <TableHead>Payment Method</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -300,15 +298,11 @@ export function PaymentsClient({
                         ${Number(payment.amount).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            payment.payment_status === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {payment.payment_status}
-                        </span>
+                        {payment.reference_number ? (
+                          <span className="font-mono text-xs text-muted-foreground">{payment.reference_number}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="capitalize">
                         {payment.payment_method.replace(/_/g, " ")}

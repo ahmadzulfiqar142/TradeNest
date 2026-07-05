@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { getCustomerDetails } from "@/actions/customer";
-import { getProductsForPayment } from "@/actions/payment";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Printer, Download } from "lucide-react";
 import Link from "next/link";
@@ -16,17 +15,11 @@ export default async function CustomerDetailsPage({
   if (!workspaceId) redirect("/create-workspace");
 
   const { customerId } = await params;
-
-  const [result, productsResult] = await Promise.all([
-    getCustomerDetails(workspaceId, customerId),
-    getProductsForPayment(workspaceId),
-  ]);
+  const result = await getCustomerDetails(workspaceId, customerId);
 
   if (!result.customer || result.error) {
     notFound();
   }
-
-  const products = productsResult.products || [];
 
   return (
     <div className="space-y-6">
@@ -79,7 +72,6 @@ export default async function CustomerDetailsPage({
         summary={result.summary}
         currency={result.currency}
         currencySymbol={result.currencySymbol}
-        products={products}
       />
     </div>
   );
