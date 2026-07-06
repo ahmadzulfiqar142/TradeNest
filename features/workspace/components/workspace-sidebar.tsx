@@ -93,7 +93,7 @@ export function Sidebar({
         <button
           onClick={handleToggleCollapse}
           className="text-sidebar-foreground hover:text-sidebar-accent transition-colors"
-          aria-name={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           <ChevronRight
             className={cn(

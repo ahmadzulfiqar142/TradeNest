@@ -7,9 +7,15 @@ import {
 } from "@/schemas/workspace";
 import { setActiveWorkspaceId } from "@/lib/workspace-cookie";
 
-export async function checkSlugAvailability(slug: string): Promise<{ available: boolean }> {
+export async function checkSlugAvailability(
+  slug: string,
+): Promise<{ available: boolean }> {
   const admin = createAdminClient();
-  const { data } = await admin.from("workspaces").select("id").eq("slug", slug).maybeSingle();
+  const { data } = await admin
+    .from("workspaces")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
   return { available: !data };
 }
 
@@ -43,7 +49,7 @@ export async function createWorkspaceOnboarding(
     return {
       error: "You already have a workspace",
       success: false,
-      redirectTo: "/dashboard",
+      redirectTo: "/",
     };
   }
 

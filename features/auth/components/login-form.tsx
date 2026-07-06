@@ -9,10 +9,11 @@ import { loginSchema, type LoginFormValues } from "@/schemas/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm() {
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { error } = useToast();
 
   const {
     register,
@@ -29,11 +30,11 @@ export function LoginForm() {
     try {
       const result = await login(data);
       if (result?.error) {
-        setError(result.error);
+        error(result.error);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "NEXT_REDIRECT") throw err;
-      setError("An unexpected error occurred");
+      error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -85,12 +86,6 @@ export function LoginForm() {
           )}
         </div>
       </div>
-
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
 
       <Button
         type="submit"

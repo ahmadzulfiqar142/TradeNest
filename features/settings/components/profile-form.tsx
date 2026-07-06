@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useRef, useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Upload, User, X } from "lucide-react";
 import { updateProfile } from "@/actions/profile";
 import { Button } from "@/components/ui/button";
@@ -14,6 +16,11 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { createClient } from "@/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import {
+  updateProfileSchema,
+  type UpdateProfileFormValues,
+} from "@/schemas/profile";
 
 interface ProfileFormProps {
   profile: {
@@ -24,7 +31,7 @@ interface ProfileFormProps {
   };
 }
 
-const AVATAR_BUCKET = "avatars"; // ← Change if your bucket name is different
+const AVATAR_BUCKET = "avatars";
 
 export function ProfileForm({ profile }: ProfileFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,13 +40,39 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
 
-  const [state, formAction, pending] = useActionState(
+  const [state, formAction] = useActionState(
     async (
       previousState: { message: string; success: boolean },
       formData: FormData,
     ) => updateProfile(profile.id, previousState, formData),
     { message: "", success: false },
   );
+  const [pending, startTransition] = useTransition();
+
+  const { success, error } = useToast();
+  const handledStateRef = useRef(state);
+
+  useEffect(() => {
+    if (state === handledStateRef.current) return;
+    handledStateRef.current = state;
+    if (!state.message) return;
+    if (state.success) {
+      success(state.message);
+    } else {
+      error(state.message);
+    }
+  }, [state, success, error]);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UpdateProfileFormValues>({
+    resolver: zodResolver(updateProfileSchema),
+    defaultValues: {
+      full_name: profile.full_name ?? "",
+    },
+  });
 
   async function handleAvatarUpload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -85,9 +118,16 @@ export function ProfileForm({ profile }: ProfileFormProps) {
     }
   };
 
+  const onSubmit = (data: UpdateProfileFormValues) => {
+    const formData = new FormData();
+    formData.append("full_name", data.full_name);
+    formData.append("avatar_url", avatarUrl);
+    startTransition(() => formAction(formData));
+  };
+
   return (
     <Card className="max-w-2xl bg-gray-800 border-gray-700">
-      <form action={formAction} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="space-y-3">
@@ -156,16 +196,20 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="full_name" className="text-gray-300">
-              Full Name
+              Full Name *
             </Label>
             <Input
               id="full_name"
-              name="full_name"
-              defaultValue={profile.full_name ?? ""}
+              {...register("full_name")}
               placeholder="John Doe"
               disabled={pending}
-              className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
+              className={`bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600 ${
+                errors.full_name ? "border-red-500" : ""
+              }`}
             />
+            {errors.full_name && (
+              <p className="text-xs text-red-400">{errors.full_name.message}</p>
+            )}
           </div>
 
           {/* Email */}
@@ -184,16 +228,6 @@ export function ProfileForm({ profile }: ProfileFormProps) {
           {uploadMessage && (
             <p className="text-sm text-gray-400" aria-live="polite">
               {uploadMessage}
-            </p>
-          )}
-
-          {state.message && (
-            <p
-              className={`text-sm font-medium ${
-                state.success ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              {state.message}
             </p>
           )}
 

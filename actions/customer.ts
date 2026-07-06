@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { createCustomerSchema } from "@/schemas/customer";
 
@@ -104,10 +103,7 @@ export async function createCustomer(
   revalidatePath("/customers");
   revalidatePath("/");
 
-  redirect("/customers");
-}
-
-export async function updateCustomer(
+  return { message: "Customer created successfully", success: true };(
   workspaceId: string,
   customerId: string,
   _previousState: CustomerActionState,
@@ -177,7 +173,7 @@ export async function updateCustomer(
   revalidatePath(`/customers/${customerId}`);
   revalidatePath("/");
 
-  redirect("/customers");
+  return { message: "Customer updated successfully", success: true };
 }
 
 export async function deleteCustomer(

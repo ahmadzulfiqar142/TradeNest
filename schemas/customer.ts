@@ -1,11 +1,5 @@
 import { z } from "zod";
 
-const optionalText = z
-  .string()
-  .trim()
-  .optional()
-  .transform((value) => (value ? value : undefined));
-
 export const createCustomerSchema = z.object({
   firstName: z
     .string()
@@ -22,11 +16,16 @@ export const createCustomerSchema = z.object({
     .trim()
     .min(1, "Phone number is required")
     .regex(/^[0-9]+$/, "Phone number must contain only numbers"),
-  address: optionalText,
-  city: optionalText,
-  notes: optionalText.refine((val) => !val || val.length <= 500, {
-    message: "Notes must not exceed 500 characters",
-  }),
+  address: z.string().trim().optional().nullable(),
+  city: z.string().trim().optional().nullable(),
+  notes: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine((val) => !val || val.length <= 500, {
+      message: "Notes must not exceed 500 characters",
+    }),
 });
 
 export type CreateCustomerFormValues = z.infer<typeof createCustomerSchema>;

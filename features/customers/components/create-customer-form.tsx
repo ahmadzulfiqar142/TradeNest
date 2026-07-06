@@ -1,15 +1,20 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { Plus, Save } from "lucide-react";
-import {
-  createCustomer,
-  updateCustomer,
-  type CustomerActionState,
-} from "@/actions/customer";
+import { createCustomer, updateCustomer } from "@/actions/customer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import {
+  createCustomerSchema,
+  type CreateCustomerFormValues,
+} from "@/schemas/customer";
 
 type CreateCustomerFormProps = {
   workspaceId: string;
@@ -26,190 +31,189 @@ type CreateCustomerFormProps = {
   };
 };
 
-const initialCustomerActionState: CustomerActionState = {
-  message: "",
-  success: false,
-};
-
 export function CreateCustomerForm({
   workspaceId,
   mode = "create",
   customer,
 }: CreateCustomerFormProps) {
-  const customerAction =
-    mode === "edit" && customer
-      ? updateCustomer.bind(null, workspaceId, customer.id)
-      : createCustomer.bind(null, workspaceId);
-  const [state, formAction, pending] = useActionState(
-    customerAction,
-    initialCustomerActionState,
-  );
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const { success, error } = useToast();
   const isEditMode = mode === "edit";
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.success) {
-        success(state.message);
-      } else {
-        error(state.message);
-      }
-    }
-  }, [state, success, error]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<CreateCustomerFormValues>({
+    resolver: zodResolver(createCustomerSchema),
+    defaultValues: {
+      firstName: customer?.first_name ?? "",
+      lastName: customer?.last_name ?? "",
+      phone: customer?.phone ?? "",
+      address: customer?.address ?? undefined,
+      city: customer?.city ?? undefined,
+      notes: customer?.notes ?? undefined,
+    },
+  });
 
-  // Split full name into first and last for the form
-  const firstName = customer?.first_name ?? "";
-  const lastName = customer?.last_name ?? "";
+  const onSubmit = (data: CreateCustomerFormValues) => {
+    const formData = new FormData();
+    formData.append("firstName", data.firstName);
+    formData.append("lastName", data.lastName);
+    formData.append("phone", data.phone);
+    if (data.address) formData.append("address", data.address);
+    if (data.city) formData.append("city", data.city);
+    if (data.notes) formData.append("notes", data.notes);
+
+    startTransition(async () => {
+      const result =
+        isEditMode && customer
+          ? await updateCustomer(workspaceId, customer.id, { message: "", success: false }, formData)
+          : await createCustomer(workspaceId, { message: "", success: false }, formData);
+
+      if (result.success) {
+        success(result.message);
+        router.push("/customers");
+      } else {
+        error(result.message);
+      }
+    });
+  };
 
   return (
-    <form action={formAction} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* First Name */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="firstName"
-            className="text-sm font-medium text-foreground"
-          >
-            First Name *
-          </label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            defaultValue={firstName}
-            placeholder="Enter first name"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
+    <Card>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="firstName" className="text-sm font-medium text-foreground">
+                First Name *
+              </Label>
+              <Input
+                id="firstName"
+                {...register("firstName")}
+                placeholder="Enter first name"
+                className={errors.firstName ? "border-red-500" : ""}
+                disabled={pending}
+              />
+              {errors.firstName && (
+                <p className="text-xs text-red-400">{errors.firstName.message}</p>
+              )}
+            </div>
 
-        {/* Last Name */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="lastName"
-            className="text-sm font-medium text-foreground"
-          >
-            Last Name *
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            defaultValue={lastName}
-            placeholder="Enter last name"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="lastName" className="text-sm font-medium text-foreground">
+                Last Name *
+              </Label>
+              <Input
+                id="lastName"
+                {...register("lastName")}
+                placeholder="Enter last name"
+                className={errors.lastName ? "border-red-500" : ""}
+                disabled={pending}
+              />
+              {errors.lastName && (
+                <p className="text-xs text-red-400">{errors.lastName.message}</p>
+              )}
+            </div>
 
-        {/* Phone */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="phone"
-            className="text-sm font-medium text-foreground"
-          >
-            Phone Number *
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            defaultValue={customer?.phone ?? ""}
-            placeholder="Enter phone number"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
-      </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="phone" className="text-sm font-medium text-foreground">
+                Phone Number *
+              </Label>
+              <Input
+                id="phone"
+                type="tel"
+                {...register("phone")}
+                placeholder="Enter phone number"
+                className={errors.phone ? "border-red-500" : ""}
+                disabled={pending}
+              />
+              {errors.phone && (
+                <p className="text-xs text-red-400">{errors.phone.message}</p>
+              )}
+            </div>
+          </div>
 
-      {/* Address */}
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor="address"
-          className="text-sm font-medium text-foreground"
-        >
-          Address
-        </label>
-        <input
-          type="text"
-          id="address"
-          name="address"
-          defaultValue={customer?.address ?? ""}
-          placeholder="Street address"
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="address" className="text-sm font-medium text-foreground">
+              Address
+            </Label>
+            <Input
+              id="address"
+              {...register("address")}
+              placeholder="Street address"
+              className={errors.address ? "border-red-500" : ""}
+              disabled={pending}
+            />
+            {errors.address && (
+              <p className="text-xs text-red-400">{errors.address.message}</p>
+            )}
+          </div>
 
-      {/* City */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="city" className="text-sm font-medium text-foreground">
-          City
-        </label>
-        <input
-          type="text"
-          id="city"
-          name="city"
-          defaultValue={customer?.city ?? ""}
-          placeholder="City"
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="city" className="text-sm font-medium text-foreground">
+              City
+            </Label>
+            <Input
+              id="city"
+              {...register("city")}
+              placeholder="City"
+              className={errors.city ? "border-red-500" : ""}
+              disabled={pending}
+            />
+            {errors.city && (
+              <p className="text-xs text-red-400">{errors.city.message}</p>
+            )}
+          </div>
 
-      {/* Notes */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="notes" className="text-sm font-medium text-foreground">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          defaultValue={customer?.notes ?? ""}
-          placeholder="Additional notes"
-          rows={3}
-          maxLength={500}
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="notes" className="text-sm font-medium text-foreground">
+              Notes
+            </Label>
+            <textarea
+              id="notes"
+              {...register("notes")}
+              placeholder="Additional notes"
+              rows={3}
+              maxLength={500}
+              className={`px-4 py-2 border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
+                errors.notes ? "border-red-500" : "border-border"
+              }`}
+              disabled={pending}
+            />
+            {errors.notes && (
+              <p className="text-xs text-red-400">{errors.notes.message}</p>
+            )}
+          </div>
 
-      {/* Form Actions */}
-      <div className="flex gap-3 justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            const form = document.querySelector("form");
-            if (form) form.reset();
-          }}
-          className="px-6 py-2 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors font-medium"
-        >
-          Reset
-        </button>
-        <Button type="submit" disabled={pending} className="px-6 py-2">
-          {isEditMode ? (
-            <>
-              <Save className="h-4 w-4" />
-              {pending ? "Saving..." : "Save changes"}
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" />
-              {pending ? "Creating..." : "Add Customer"}
-            </>
-          )}
-        </Button>
-      </div>
-
-      {state.message ? (
-        <p
-          className={
-            state.success
-              ? "text-sm font-medium text-green-400"
-              : "text-sm font-medium text-red-400"
-          }
-          aria-live="polite"
-        >
-          {state.message}
-        </p>
-      ) : null}
-    </form>
+          <div className="flex gap-3 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => router.back()}
+              disabled={pending}
+              className="px-6 py-2"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={pending} className="px-6 py-2">
+              {isEditMode ? (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {pending ? "Saving..." : "Save changes"}
+                </>
+              ) : (
+                <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {pending ? "Creating..." : "Add Customer"}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

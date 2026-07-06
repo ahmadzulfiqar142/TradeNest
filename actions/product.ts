@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { createProductSchema } from "@/schemas/product";
 
@@ -59,6 +58,10 @@ export async function createProduct(
   formData: FormData,
 ): Promise<ProductActionState> {
   void workspaceSlug; // slug no longer used in URLs
+  const purchasePrice = formData.get("purchasePrice");
+  const sellingPrice = formData.get("sellingPrice");
+  const stockQuantity = formData.get("stockQuantity");
+
   const parsed = createProductSchema.safeParse({
     name: formData.get("name"),
     sku: formData.get("sku"),
@@ -67,10 +70,9 @@ export async function createProduct(
     imageUrl: formData.get("imageUrl"),
     categoryId: formData.get("categoryId"),
     newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: formData.get("purchasePrice"),
-    sellingPrice: formData.get("sellingPrice"),
-    stockQuantity: formData.get("stockQuantity"),
-    minStockQuantity: formData.get("minStockQuantity"),
+    purchasePrice: purchasePrice === "" ? 0 : Number(purchasePrice),
+    sellingPrice: sellingPrice === "" ? 0 : Number(sellingPrice),
+    stockQuantity: stockQuantity === "" ? 0 : Number(stockQuantity),
     expiryDate: formData.get("expiryDate"),
     isActive: formData.get("isActive") === "true",
   });
@@ -164,14 +166,12 @@ export async function createProduct(
   revalidatePath("/products");
   revalidatePath("/");
 
-  if (inventoryHistoryWarning) {
-    return {
-      message: `Product created.${inventoryHistoryWarning}`,
-      success: true,
-    };
-  }
-
-  redirect("/products");
+  return {
+    message: inventoryHistoryWarning
+      ? `Product created.${inventoryHistoryWarning}`
+      : "Product created successfully.",
+    success: true,
+  };
 }
 
 export async function updateProduct(
@@ -181,6 +181,10 @@ export async function updateProduct(
   _previousState: ProductActionState,
   formData: FormData,
 ): Promise<ProductActionState> {
+  const purchasePrice = formData.get("purchasePrice");
+  const sellingPrice = formData.get("sellingPrice");
+  const stockQuantity = formData.get("stockQuantity");
+
   const parsed = createProductSchema.safeParse({
     name: formData.get("name"),
     sku: formData.get("sku"),
@@ -189,12 +193,10 @@ export async function updateProduct(
     imageUrl: formData.get("imageUrl"),
     categoryId: formData.get("categoryId"),
     newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: formData.get("purchasePrice"),
-    sellingPrice: formData.get("sellingPrice"),
-    stockQuantity: formData.get("stockQuantity"),
-    minStockQuantity: formData.get("minStockQuantity"),
+    purchasePrice: purchasePrice === "" ? 0 : Number(purchasePrice),
+    sellingPrice: sellingPrice === "" ? 0 : Number(sellingPrice),
+    stockQuantity: stockQuantity === "" ? 0 : Number(stockQuantity),
     expiryDate: formData.get("expiryDate"),
-    trackInventory: formData.get("trackInventory") === "true",
     isActive: formData.get("isActive") === "true",
   });
 
@@ -322,14 +324,12 @@ export async function updateProduct(
   revalidatePath(`/products/${productId}/edit`);
   revalidatePath("/");
 
-  if (inventoryHistoryWarning) {
-    return {
-      message: `Product updated.${inventoryHistoryWarning}`,
-      success: true,
-    };
-  }
-
-  redirect(`/${workspaceSlug}/products`);
+  return {
+    message: inventoryHistoryWarning
+      ? `Product updated.${inventoryHistoryWarning}`
+      : "Product updated successfully.",
+    success: true,
+  };
 }
 
 export async function deleteProduct(

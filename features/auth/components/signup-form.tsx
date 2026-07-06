@@ -9,6 +9,7 @@ import { signup } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 const signupSchema = z
   .object({
@@ -25,9 +26,9 @@ const signupSchema = z
 type SignupFormValues = z.infer<typeof signupSchema>;
 
 export function SignupForm() {
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { error } = useToast();
 
   const {
     register,
@@ -44,12 +45,12 @@ export function SignupForm() {
     try {
       const result = await signup(data.email, data.password, data.fullName);
       if (result?.error) {
-        setError(result.error);
+        error(result.error);
       } else {
         setSuccess(true);
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -167,11 +168,6 @@ export function SignupForm() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
       <Button
         type="submit"
         className="w-full h-12 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

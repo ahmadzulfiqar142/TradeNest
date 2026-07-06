@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 type ToastVariant = "default" | "destructive" | "success" | "error";
 
@@ -12,44 +12,51 @@ interface ToastOptions {
   duration?: number;
 }
 
+type Listener = (toasts: ToastOptions[]) => void;
+
+// Global singleton store
+let toasts: ToastOptions[] = [];
+const listeners = new Set<Listener>();
+
+function notify() {
+  listeners.forEach((l) => l([...toasts]));
+}
+
+function addToast(options: Omit<ToastOptions, "id">) {
+  const id = Date.now().toString();
+  toasts = [...toasts, { ...options, id }];
+  notify();
+  setTimeout(() => {
+    toasts = toasts.filter((t) => t.id !== id);
+    notify();
+  }, options.duration ?? 5000);
+}
+
+export const toast = {
+  success: (title: string, description?: string) =>
+    addToast({ title, description, variant: "success" }),
+  error: (title: string, description?: string) =>
+    addToast({ title, description, variant: "error" }),
+  info: (title: string, description?: string) =>
+    addToast({ title, description, variant: "default" }),
+};
+
 export function useToast() {
-  const [toasts, setToasts] = useState<ToastOptions[]>([]);
+  const [state, setState] = useState<ToastOptions[]>(toasts);
 
-  const addToast = useCallback((options: Omit<ToastOptions, "id">) => {
-    const id = Date.now().toString();
-    setToasts((prev) => [...prev, { ...options, id }]);
-
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, options.duration || 5000);
+  useEffect(() => {
+    listeners.add(setState);
+    return () => { listeners.delete(setState); };
   }, []);
 
-  const success = useCallback(
-    (title: string, description?: string) => {
-      addToast({ title, description, variant: "success" });
-    },
-    [addToast],
-  );
+  const success = useCallback((title: string, description?: string) =>
+    addToast({ title, description, variant: "success" }), []);
 
-  const error = useCallback(
-    (title: string, description?: string) => {
-      addToast({ title, description, variant: "error" });
-    },
-    [addToast],
-  );
+  const error = useCallback((title: string, description?: string) =>
+    addToast({ title, description, variant: "error" }), []);
 
-  const info = useCallback(
-    (title: string, description?: string) => {
-      addToast({ title, description, variant: "default" });
-    },
-    [addToast],
-  );
+  const info = useCallback((title: string, description?: string) =>
+    addToast({ title, description, variant: "default" }), []);
 
-  return {
-    toasts,
-    success,
-    error,
-    info,
-    addToast,
-  };
+  return { toasts: state, success, error, info };
 }

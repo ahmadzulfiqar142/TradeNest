@@ -12,10 +12,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export function CreateWorkspaceForm() {
-  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const { error } = useToast();
 
   const {
     register,
@@ -50,10 +51,10 @@ export function CreateWorkspaceForm() {
     try {
       const result = await createWorkspace(data);
       if (result?.error) {
-        setError(result.error);
+        error(result.error);
       }
     } catch (err) {
-      setError("An unexpected error occurred");
+      error("An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }
@@ -167,12 +168,6 @@ export function CreateWorkspaceForm() {
           )}
         </div>
       </div>
-
-      {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
