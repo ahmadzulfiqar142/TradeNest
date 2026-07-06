@@ -306,6 +306,17 @@ export async function deleteProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
+  const { data: existingProduct, error: fetchError } = await supabase
+    .from("products")
+    .select("image_url")
+    .eq("id", productId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
+  if (fetchError || !existingProduct) {
+    return { message: "Product not found or you don't have permission to delete it.", success: false };
+  }
+
   const admin = createAdminClient();
   const { count: saleCount } = await admin
     .from("sale_items")
@@ -319,9 +330,9 @@ export async function deleteProduct(
     };
   }
 
-  const { error: productError, count } = await supabase
+  const { error: productError } = await supabase
     .from("products")
-    .update({ deleted_at: new Date().toISOString() }, { count: "exact" })
+    .delete()
     .eq("id", productId)
     .eq("workspace_id", workspaceId);
 
@@ -329,8 +340,11 @@ export async function deleteProduct(
     return { message: productError.message, success: false };
   }
 
-  if (count === 0) {
-    return { message: "Product not found or you don't have permission to delete it.", success: false };
+  if (existingProduct.image_url) {
+    const imagePath = getStoragePath(existingProduct.image_url);
+    if (imagePath) {
+      await supabase.storage.from("product-images").remove([imagePath]);
+    }
   }
 
   revalidatePath("/products");
