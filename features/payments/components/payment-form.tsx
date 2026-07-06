@@ -1,6 +1,5 @@
 "use client";
 
-import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -8,17 +7,13 @@ import { Plus, Save } from "lucide-react";
 import { createPayment, updatePayment } from "@/actions/payment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import { PAYMENT_METHODS, createPaymentSchema } from "@/schemas/payment";
-import type { CreatePaymentFormValues } from "@/schemas/payment";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { PAYMENT_METHODS, createPaymentSchema, type CreatePaymentFormValues } from "@/schemas/payment";
 import { useToast } from "@/hooks/use-toast";
 
-type OpenSale = {
-  id: string;
-  invoice_number: string;
-  total: number;
-  status: string;
-};
+type OpenSale = { id: string; invoice_number: string; total: number; status: string };
 
 type PaymentFormProps = {
   workspaceId: string;
@@ -33,42 +28,19 @@ type PaymentFormProps = {
     reference_number: string | null;
     notes: string | null;
   };
-  customers: {
-    id: string;
-    first_name: string;
-    last_name: string;
-    phone: string;
-  }[];
+  customers: { id: string; first_name: string; last_name: string; phone: string }[];
   openSales?: OpenSale[];
   preselectedSaleId?: string | null;
   onSuccess?: () => void;
 };
 
-const inputClass = (hasError?: boolean) =>
-  `px-4 py-2 border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all ${
-    hasError ? "border-red-500" : "border-border"
-  }`;
+const selectClass = "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted";
 
-export function PaymentForm({
-  workspaceId,
-  mode = "create",
-  payment,
-  customers,
-  openSales = [],
-  preselectedSaleId,
-  onSuccess,
-}: PaymentFormProps) {
+export function PaymentForm({ workspaceId, mode = "create", payment, customers, openSales = [], preselectedSaleId, onSuccess }: PaymentFormProps) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const { success, error } = useToast();
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
-  } = useForm<CreatePaymentFormValues>({
+  const form = useForm<CreatePaymentFormValues>({
     resolver: zodResolver(createPaymentSchema),
     defaultValues: {
       customerId: payment?.customer_id ?? "",
@@ -81,166 +53,155 @@ export function PaymentForm({
     },
   });
 
-  const onSubmit = (data: CreatePaymentFormValues) => {
-    const formData = new FormData();
-    formData.append("customerId", data.customerId);
-    formData.append("amount", data.amount.toString());
-    formData.append("paymentMethod", data.paymentMethod);
-    formData.append("paymentDate", data.paymentDate);
-    if (data.saleId) formData.append("saleId", data.saleId);
-    if (data.referenceNumber) formData.append("referenceNumber", data.referenceNumber);
-    if (data.notes) formData.append("notes", data.notes);
+  const onSubmit = async (data: CreatePaymentFormValues) => {
+    const result =
+      mode === "edit" && payment
+        ? await updatePayment(workspaceId, payment.id, data)
+        : await createPayment(workspaceId, data);
 
-    startTransition(async () => {
-      const result =
-        mode === "edit" && payment
-          ? await updatePayment(workspaceId, payment.id, { message: "", success: false }, formData)
-          : await createPayment(workspaceId, { message: "", success: false }, formData);
-
-      if (result.success) {
-        success(result.message);
-        onSuccess?.();
-        if (mode === "create") router.push("/payments");
-      } else {
-        error(result.message);
-      }
-    });
+    if (result.success) {
+      success(result.message);
+      onSuccess?.();
+      if (mode === "create") router.push("/payments");
+    } else {
+      error(result.message);
+    }
   };
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Autocomplete
-              options={customers.map((c) => ({
-                id: c.id,
-                label: `${c.first_name} ${c.last_name}`,
-                subtitle: c.phone,
-              }))}
-              value={watch("customerId")}
-              onValueChange={(v) => setValue("customerId", v ?? "")}
-              placeholder="Search customers..."
-              label="Customer"
-              required
-              error={errors.customerId?.message}
-            />
-
-            {openSales.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <label htmlFor="saleId" className="text-sm font-medium text-foreground">
-                  Link to Invoice{" "}
-                  <span className="text-muted-foreground text-xs">(optional)</span>
-                </label>
-                <select id="saleId" {...register("saleId")} className={inputClass()}>
-                  <option value="">Advance / Unlinked Payment</option>
-                  {openSales.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.invoice_number} — Rs. {Number(s.total).toLocaleString()} ({s.status})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="amount" className="text-sm font-medium text-foreground">
-                Amount <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="amount"
-                {...register("amount", { valueAsNumber: true })}
-                step="0.01"
-                min="0.01"
-                placeholder="0.00"
-                className={inputClass(!!errors.amount)}
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Customer — uses Autocomplete, wired via form.setValue */}
+              <FormField
+                control={form.control}
+                name="customerId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer *</FormLabel>
+                    <FormControl>
+                      <Autocomplete
+                        options={customers.map((c) => ({ id: c.id, label: `${c.first_name} ${c.last_name}`, subtitle: c.phone }))}
+                        value={field.value}
+                        onValueChange={(v) => form.setValue("customerId", v ?? "")}
+                        placeholder="Search customers..."
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.amount && (
-                <p className="text-xs text-red-400">{errors.amount.message}</p>
-              )}
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="paymentMethod" className="text-sm font-medium text-foreground">
-                Payment Method <span className="text-red-400">*</span>
-              </label>
-              <select
-                id="paymentMethod"
-                {...register("paymentMethod")}
-                className={inputClass(!!errors.paymentMethod)}
-              >
-                <option value="">Select payment method</option>
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-              {errors.paymentMethod && (
-                <p className="text-xs text-red-400">{errors.paymentMethod.message}</p>
+              {openSales.length > 0 && (
+                <FormField
+                  control={form.control}
+                  name="saleId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Link to Invoice <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                      <FormControl>
+                        <select {...field} value={field.value ?? ""} className={selectClass}>
+                          <option value="">Advance / Unlinked Payment</option>
+                          {openSales.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.invoice_number} — Rs. {Number(s.total).toLocaleString()} ({s.status})
+                            </option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               )}
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="paymentDate" className="text-sm font-medium text-foreground">
-                Payment Date <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="date"
-                id="paymentDate"
-                {...register("paymentDate")}
-                className={inputClass(!!errors.paymentDate)}
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount *</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0.01" placeholder="0.00" {...field} onChange={(e) => field.onChange(e.target.valueAsNumber)} disabled={form.formState.isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              {errors.paymentDate && (
-                <p className="text-xs text-red-400">{errors.paymentDate.message}</p>
-              )}
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="referenceNumber" className="text-sm font-medium text-foreground">
-                Reference Number{" "}
-                <span className="text-muted-foreground text-xs">(optional)</span>
-              </label>
-              <input
-                type="text"
-                id="referenceNumber"
-                {...register("referenceNumber")}
-                placeholder="e.g. TXN-12345"
-                className={inputClass()}
+              <FormField
+                control={form.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Method *</FormLabel>
+                    <FormControl>
+                      <select {...field} className={selectClass} disabled={form.formState.isSubmitting}>
+                        <option value="">Select payment method</option>
+                        {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="paymentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Date *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} disabled={form.formState.isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="referenceNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference Number <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. TXN-12345" {...field} value={field.value ?? ""} disabled={form.formState.isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Notes <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="Any additional notes..." {...field} value={field.value ?? ""} disabled={form.formState.isSubmitting} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
 
-            <div className="flex flex-col gap-2 md:col-span-2">
-              <label htmlFor="notes" className="text-sm font-medium text-foreground">
-                Notes <span className="text-muted-foreground text-xs">(optional)</span>
-              </label>
-              <input
-                type="text"
-                id="notes"
-                {...register("notes")}
-                placeholder="Any additional notes..."
-                className={inputClass()}
-              />
+            <div className="flex gap-3 justify-end">
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {mode === "edit" ? (
+                  <><Save className="h-4 w-4 mr-2" />{form.formState.isSubmitting ? "Saving..." : "Save Changes"}</>
+                ) : (
+                  <><Plus className="h-4 w-4 mr-2" />{form.formState.isSubmitting ? "Creating..." : "Add Payment"}</>
+                )}
+              </Button>
             </div>
-          </div>
-
-          <div className="flex gap-3 justify-end">
-            <Button type="submit" disabled={pending} className="px-6 py-2">
-              {mode === "edit" ? (
-                <>
-                  <Save className="h-4 w-4" />
-                  {pending ? "Saving..." : "Save Changes"}
-                </>
-              ) : (
-                <>
-                  <Plus className="h-4 w-4" />
-                  {pending ? "Creating..." : "Add Payment"}
-                </>
-              )}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </CardContent>
     </Card>
   );

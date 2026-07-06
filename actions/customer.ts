@@ -41,17 +41,9 @@ async function getAuthorizedUser(workspaceId: string) {
 
 export async function createCustomer(
   workspaceId: string,
-  _previousState: CustomerActionState,
-  formData: FormData,
+  data: import("@/schemas/customer").CreateCustomerFormValues,
 ): Promise<CustomerActionState> {
-  const parsed = createCustomerSchema.safeParse({
-    firstName: formData.get("firstName")?.toString() || "",
-    lastName: formData.get("lastName")?.toString() || "",
-    phone: formData.get("phone")?.toString() || "",
-    address: formData.get("address")?.toString(),
-    city: formData.get("city")?.toString(),
-    notes: formData.get("notes")?.toString(),
-  });
+  const parsed = createCustomerSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -103,20 +95,15 @@ export async function createCustomer(
   revalidatePath("/customers");
   revalidatePath("/");
 
-  return { message: "Customer created successfully", success: true };(
+  return { message: "Customer created successfully", success: true };
+}
+
+export async function updateCustomer(
   workspaceId: string,
   customerId: string,
-  _previousState: CustomerActionState,
-  formData: FormData,
+  data: import("@/schemas/customer").CreateCustomerFormValues,
 ): Promise<CustomerActionState> {
-  const parsed = createCustomerSchema.safeParse({
-    firstName: formData.get("firstName")?.toString() || "",
-    lastName: formData.get("lastName")?.toString() || "",
-    phone: formData.get("phone")?.toString() || "",
-    address: formData.get("address")?.toString(),
-    city: formData.get("city")?.toString(),
-    notes: formData.get("notes")?.toString(),
-  });
+  const parsed = createCustomerSchema.safeParse(data);
 
   if (!parsed.success) {
     return {

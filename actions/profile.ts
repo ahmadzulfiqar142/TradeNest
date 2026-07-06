@@ -10,8 +10,7 @@ export type ProfileActionState = {
 
 export async function updateProfile(
   profileId: string,
-  _previousState: ProfileActionState,
-  formData: FormData,
+  data: { full_name: string; avatar_url?: string },
 ): Promise<ProfileActionState> {
   const supabase = await createClient();
   const {
@@ -21,7 +20,7 @@ export async function updateProfile(
 
   if (userError || !user) return { message: "Unauthorized", success: false };
 
-  const full_name = formData.get("full_name")?.toString() ?? "";
+  const full_name = data.full_name;
 
   const admin = createAdminClient();
   const { error } = await admin

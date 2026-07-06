@@ -54,28 +54,10 @@ async function getAuthorizedUser(workspaceId: string) {
 export async function createProduct(
   workspaceId: string,
   workspaceSlug: string,
-  _previousState: ProductActionState,
-  formData: FormData,
+  data: import("@/schemas/product").CreateProductFormValues,
 ): Promise<ProductActionState> {
-  void workspaceSlug; // slug no longer used in URLs
-  const purchasePrice = formData.get("purchasePrice");
-  const sellingPrice = formData.get("sellingPrice");
-  const stockQuantity = formData.get("stockQuantity");
-
-  const parsed = createProductSchema.safeParse({
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    barcode: formData.get("barcode"),
-    description: formData.get("description"),
-    imageUrl: formData.get("imageUrl"),
-    categoryId: formData.get("categoryId"),
-    newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: purchasePrice === "" ? 0 : Number(purchasePrice),
-    sellingPrice: sellingPrice === "" ? 0 : Number(sellingPrice),
-    stockQuantity: stockQuantity === "" ? 0 : Number(stockQuantity),
-    expiryDate: formData.get("expiryDate"),
-    isActive: formData.get("isActive") === "true",
-  });
+  void workspaceSlug;
+  const parsed = createProductSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -178,27 +160,9 @@ export async function updateProduct(
   workspaceId: string,
   workspaceSlug: string,
   productId: string,
-  _previousState: ProductActionState,
-  formData: FormData,
+  data: import("@/schemas/product").CreateProductFormValues,
 ): Promise<ProductActionState> {
-  const purchasePrice = formData.get("purchasePrice");
-  const sellingPrice = formData.get("sellingPrice");
-  const stockQuantity = formData.get("stockQuantity");
-
-  const parsed = createProductSchema.safeParse({
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    barcode: formData.get("barcode"),
-    description: formData.get("description"),
-    imageUrl: formData.get("imageUrl"),
-    categoryId: formData.get("categoryId"),
-    newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: purchasePrice === "" ? 0 : Number(purchasePrice),
-    sellingPrice: sellingPrice === "" ? 0 : Number(sellingPrice),
-    stockQuantity: stockQuantity === "" ? 0 : Number(stockQuantity),
-    expiryDate: formData.get("expiryDate"),
-    isActive: formData.get("isActive") === "true",
-  });
+  const parsed = createProductSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -215,8 +179,8 @@ export async function updateProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
-  const newImageUrl = formData.get("imageUrl")?.toString() ?? null;
-  const oldImageUrl = formData.get("oldImageUrl")?.toString() ?? null;
+  const newImageUrl = data.imageUrl ?? null;
+  const oldImageUrl = (data as { oldImageUrl?: string }).oldImageUrl ?? null;
 
   // Fetch existing product (including current image)
   const { data: existingProduct, error: existingProductError } = await supabase
@@ -342,14 +306,31 @@ export async function deleteProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
-  const { error: productError } = await supabase
+  const admin = createAdminClient();
+  const { count: saleCount } = await admin
+    .from("sale_items")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (saleCount && saleCount > 0) {
+    return {
+      message: "This product cannot be deleted because it is used in sales records.",
+      success: false,
+    };
+  }
+
+  const { error: productError, count } = await supabase
     .from("products")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: new Date().toISOString() }, { count: "exact" })
     .eq("id", productId)
     .eq("workspace_id", workspaceId);
 
   if (productError) {
     return { message: productError.message, success: false };
+  }
+
+  if (count === 0) {
+    return { message: "Product not found or you don't have permission to delete it.", success: false };
   }
 
   revalidatePath("/products");

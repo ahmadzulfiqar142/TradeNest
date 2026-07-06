@@ -6,6 +6,7 @@ export const updateProfileSchema = z.object({
     .trim()
     .min(2, "Full name must be at least 2 characters")
     .max(100, "Full name must not exceed 100 characters"),
+  avatar_url: z.string().optional(),
 });
 
 export type UpdateProfileFormValues = z.infer<typeof updateProfileSchema>;
