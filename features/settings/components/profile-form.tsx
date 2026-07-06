@@ -75,7 +75,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
                       </div>
                     )}
                   </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 rounded-full transition-all">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full transition-all">
                     <div className="text-white text-xs font-medium flex flex-col items-center">
                       <Upload className="h-4 w-4 mb-1" />Change
                     </div>

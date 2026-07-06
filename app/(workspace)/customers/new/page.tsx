@@ -14,8 +14,8 @@ export default async function NewCustomerPage() {
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-100">Add customer</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-foreground">Add customer</h1>
+            <p className="text-sm text-muted-foreground">
               Create a new customer with contact details and balance
               information.
             </p>
@@ -27,7 +27,7 @@ export default async function NewCustomerPage() {
             </Link>
           </Button>
         </div>
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <CreateCustomerForm workspaceId={workspaceId} />
         </div>
       </div>

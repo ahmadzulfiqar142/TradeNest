@@ -17,43 +17,23 @@ interface OnboardingWizardProps {
 }
 
 const steps = [
-  {
-    id: 1,
-    title: "Welcome to Business Management!",
-    description: "",
-  },
-  {
-    id: 2,
-    title: "Company Details",
-    description: "Tell us about your business",
-  },
-  {
-    id: 3,
-    title: "Contact Information",
-    description: "Optional contact details",
-  },
+  { id: 1, title: "Welcome to Business Management!", description: "" },
+  { id: 2, title: "Company Details", description: "Tell us about your business" },
+  { id: 3, title: "Contact Information", description: "Optional contact details" },
   { id: 4, title: "Workspace", description: "Configure your workspace" },
 ];
 
 export function OnboardingWizard({ user }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const [workspaceData, setWorkspaceData] = useState<
-    Partial<CreateWorkspaceFormValues>
-  >({});
+  const [workspaceData, setWorkspaceData] = useState<Partial<CreateWorkspaceFormValues>>({});
   const [isLoading, setIsLoading] = useState(false);
   const stepTwoTriggerSubmit = useRef<(() => void) | null>(null);
   const stepThreeTriggerSubmit = useRef<(() => void) | null>(null);
 
-  const handleNext = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, steps.length));
-  };
-
-  const handleBack = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
-  };
+  const handleNext = () => setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+  const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   const handleWorkspaceData = (data: CreateWorkspaceFormValues) => {
-    // Store workspace data from step 2
     setWorkspaceData(data);
     handleNext();
   };
@@ -61,14 +41,12 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
   const handleCreateWorkspace = async (data: CreateWorkspaceFormValues) => {
     setIsLoading(true);
     try {
-      // Create the workspace with the provided data
       const result = await createWorkspaceOnboarding(data);
       if (result?.error) {
         console.error("Failed to create workspace:", result.error);
         setIsLoading(false);
         return;
       }
-      // Store workspace data and move to next step
       setWorkspaceData(data);
       handleNext();
     } catch (err) {
@@ -87,42 +65,38 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             <div
               key={step.id}
               className={`flex-1 h-2 rounded-full transition-colors ${
-                step.id <= currentStep ? "bg-primary" : "bg-slate-700"
+                step.id <= currentStep ? "bg-primary" : "bg-muted"
               }`}
             />
           ))}
         </div>
-        <p className="text-slate-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           Step {currentStep} of {steps.length}
         </p>
       </div>
 
       {/* Main Content */}
-      <div className="bg-slate-800/50 backdrop-blur border border-slate-700 rounded-2xl p-8 space-y-8">
+      <div className="bg-card border border-border rounded-2xl p-8 space-y-8">
         {/* Step Headers */}
         <div className="text-center space-y-3">
-          <h1 className="text-4xl font-bold text-white">
+          <h1 className="text-4xl font-bold text-foreground">
             {steps[currentStep - 1]?.title}
           </h1>
-          <p className="text-slate-400 text-lg">
+          <p className="text-muted-foreground text-lg">
             {steps[currentStep - 1]?.description}
           </p>
         </div>
 
         {/* Step Content */}
         <div className="space-y-6">
-          {currentStep === 1 && (
-            <OnboardingStepOne user={user} onNext={handleNext} />
-          )}
+          {currentStep === 1 && <OnboardingStepOne user={user} onNext={handleNext} />}
           {currentStep === 2 && (
             <OnboardingStepTwo
               user={user}
               workspaceData={workspaceData}
               onNext={handleWorkspaceData}
               onBack={handleBack}
-              onTriggerSubmit={(triggerFn) => {
-                stepTwoTriggerSubmit.current = triggerFn;
-              }}
+              onTriggerSubmit={(fn) => { stepTwoTriggerSubmit.current = fn; }}
             />
           )}
           {currentStep === 3 && (
@@ -131,23 +105,19 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
               workspaceData={workspaceData}
               onNext={handleCreateWorkspace}
               onBack={handleBack}
-              onTriggerSubmit={(triggerFn) => {
-                stepThreeTriggerSubmit.current = triggerFn;
-              }}
+              onTriggerSubmit={(fn) => { stepThreeTriggerSubmit.current = fn; }}
             />
           )}
-          {currentStep === 4 && (
-            <OnboardingStepFour workspaceData={workspaceData} />
-          )}
+          {currentStep === 4 && <OnboardingStepFour workspaceData={workspaceData} />}
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex gap-3 justify-between pt-6 border-t border-slate-700">
+        <div className="flex gap-3 justify-between pt-6 border-t border-border">
           <div className="flex gap-3">
             {currentStep > 1 && (
               <button
                 onClick={handleBack}
-                className="px-4 py-2.5 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 transition-colors font-medium"
+                className="px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium"
               >
                 Previous
               </button>
@@ -158,7 +128,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
             {currentStep < 3 && (
               <button
                 onClick={handleNext}
-                className="px-4 py-2.5 text-slate-300 hover:text-slate-100 transition-colors font-medium"
+                className="px-4 py-2.5 text-muted-foreground hover:text-foreground transition-colors font-medium"
               >
                 Skip
               </button>
@@ -167,10 +137,7 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
               onClick={async () => {
                 if (currentStep === 2 && stepTwoTriggerSubmit.current) {
                   await stepTwoTriggerSubmit.current();
-                } else if (
-                  currentStep === 3 &&
-                  stepThreeTriggerSubmit.current
-                ) {
+                } else if (currentStep === 3 && stepThreeTriggerSubmit.current) {
                   await stepThreeTriggerSubmit.current();
                 } else {
                   handleNext();
@@ -182,15 +149,9 @@ export function OnboardingWizard({ user }: OnboardingWizardProps) {
               {isLoading ? (
                 <>Creating...</>
               ) : currentStep === 4 ? (
-                <>
-                  Go to Dashboard
-                  <ChevronRight className="w-4 h-4" />
-                </>
+                <>Go to Dashboard <ChevronRight className="w-4 h-4" /></>
               ) : (
-                <>
-                  Next
-                  <ChevronRight className="w-4 h-4" />
-                </>
+                <>Next <ChevronRight className="w-4 h-4" /></>
               )}
             </button>
           </div>

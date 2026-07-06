@@ -313,7 +313,7 @@ export function PaymentsClient({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-gray-300 hover:text-white hover:bg-gray-700"
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>

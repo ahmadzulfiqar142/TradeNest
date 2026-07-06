@@ -5,15 +5,15 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Inventory</h1>
-        <p className="text-gray-500">Track and manage your inventory</p>
+        <h1 className="text-3xl font-bold text-foreground">Inventory</h1>
+        <p className="text-muted-foreground">Track and manage your inventory</p>
       </div>
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-4">
-            <div className="rounded-full bg-green-100 p-3">
-              <Warehouse className="h-6 w-6 text-green-600" />
+            <div className="rounded-full bg-green-500/10 p-3">
+              <Warehouse className="h-6 w-6 text-green-500" />
             </div>
             <div>
               <CardTitle>Inventory Module</CardTitle>
@@ -22,7 +22,7 @@ export default function InventoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <ul className="mt-4 space-y-2 text-sm text-gray-600">
+          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
             <li>• Stock in/out transactions</li>
             <li>• Stock adjustments</li>
             <li>• Transaction history</li>

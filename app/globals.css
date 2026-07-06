@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --font-heading: var(--font-sans);
@@ -117,42 +117,7 @@
   --sidebar-ring: #3B82F6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    color-scheme: dark;
-    --background: #0F172A;
-    --foreground: #F1F5F9;
-    --card: #1E293B;
-    --card-foreground: #F1F5F9;
-    --popover: #1E293B;
-    --popover-foreground: #F1F5F9;
-    --primary: #3B82F6;
-    --primary-foreground: #0F172A;
-    --secondary: #334155;
-    --secondary-foreground: #F1F5F9;
-    --muted: #475569;
-    --muted-foreground: #94A3B8;
-    --accent: #3B82F6;
-    --accent-foreground: #0F172A;
-    --destructive: #EF4444;
-    --border: #334155;
-    --input: #1E293B;
-    --ring: #3B82F6;
-    --chart-1: #3B82F6;
-    --chart-2: #2563EB;
-    --chart-3: #1D4ED8;
-    --chart-4: #1E40AF;
-    --chart-5: #1E3A8A;
-    --sidebar: #0F172A;
-    --sidebar-foreground: #F1F5F9;
-    --sidebar-primary: #3B82F6;
-    --sidebar-primary-foreground: #F1F5F9;
-    --sidebar-accent: #60A5FA;
-    --sidebar-accent-foreground: #0F172A;
-    --sidebar-border: #1E293B;
-    --sidebar-ring: #3B82F6;
-  }
-}
+
 
 @layer base {
   * {

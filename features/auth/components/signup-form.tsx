@@ -47,14 +47,14 @@ export function SignupForm() {
     return (
       <div className="space-y-4 text-center">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-green-400">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-green-500">
             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
             <polyline points="22 4 12 14.01 9 11.01" />
           </svg>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-white">Check your email</h3>
-          <p className="mt-2 text-sm text-slate-400">We sent you a verification link. Please verify your email to continue.</p>
+          <h3 className="text-lg font-semibold text-foreground">Check your email</h3>
+          <p className="mt-2 text-sm text-muted-foreground">We sent you a verification link. Please verify your email to continue.</p>
         </div>
       </div>
     );
@@ -69,9 +69,9 @@ export function SignupForm() {
             name="fullName"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-slate-200">Full Name</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">Full Name</FormLabel>
                 <FormControl>
-                  <Input type="text" placeholder="John Doe" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500" />
+                  <Input type="text" placeholder="John Doe" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -83,9 +83,9 @@ export function SignupForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-slate-200">Email Address</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">Email Address</FormLabel>
                 <FormControl>
-                  <Input type="email" placeholder="you@example.com" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500" />
+                  <Input type="email" placeholder="you@example.com" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -97,9 +97,9 @@ export function SignupForm() {
             name="password"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-slate-200">Password</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="At least 6 characters" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500" />
+                  <Input type="password" placeholder="At least 6 characters" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -111,9 +111,9 @@ export function SignupForm() {
             name="confirmPassword"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium text-slate-200">Confirm Password</FormLabel>
+                <FormLabel className="text-sm font-medium text-foreground">Confirm Password</FormLabel>
                 <FormControl>
-                  <Input type="password" placeholder="Confirm your password" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base bg-slate-900 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-500" />
+                  <Input type="password" placeholder="Confirm your password" {...field} disabled={form.formState.isSubmitting} className="h-12 px-4 text-base" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -121,7 +121,7 @@ export function SignupForm() {
           />
         </div>
 
-        <Button type="submit" className="w-full h-12 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90" disabled={form.formState.isSubmitting}>
+        <Button type="submit" className="w-full h-12 font-semibold" disabled={form.formState.isSubmitting}>
           {form.formState.isSubmitting && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
           Create Account
         </Button>

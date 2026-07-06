@@ -98,13 +98,13 @@ export default function CustomersClient({
             href={`/customers/${row.id}`}
             className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-semibold">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold">
               {row.first_name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <span className="font-medium text-white">{fullName}</span>
+              <span className="font-medium text-foreground">{fullName}</span>
               {row.phone && (
-                <p className="text-sm text-gray-500">{row.phone}</p>
+                <p className="text-sm text-muted-foreground">{row.phone}</p>
               )}
             </div>
           </Link>
@@ -130,8 +130,8 @@ export default function CustomersClient({
       render: (value: string) => {
         const isActive = value === "Active";
         const colorClass = isActive
-          ? "bg-green-100 text-green-800"
-          : "bg-gray-100 text-gray-800";
+          ? "bg-green-500/10 text-green-700 dark:text-green-400"
+          : "bg-muted text-muted-foreground";
         return (
           <span
             className={`px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
@@ -151,7 +151,7 @@ export default function CustomersClient({
             <Button
               variant="ghost"
               size="sm"
-              className="text-gray-300 hover:text-white hover:bg-gray-700"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
@@ -202,8 +202,8 @@ export default function CustomersClient({
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Customers</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold text-foreground">Customers</h1>
+          <p className="text-muted-foreground">
             Manage customer information and balances.
           </p>
         </div>
@@ -216,20 +216,20 @@ export default function CustomersClient({
       </div>
 
       {/* Customers Table */}
-      <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="rounded-lg border border-border bg-card">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-100 mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             Customers List
           </h2>
           {customers.length === 0 ? (
-            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
-              <div className="rounded-full bg-gray-700 p-3">
-                <Plus className="h-6 w-6 text-gray-400" />
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-border text-center">
+              <div className="rounded-full bg-muted p-3">
+                <Plus className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h2 className="mt-4 text-lg font-semibold text-gray-200">
+              <h2 className="mt-4 text-lg font-semibold text-foreground">
                 No customers yet
               </h2>
-              <p className="mt-1 max-w-sm text-sm text-gray-400">
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                 Add your first customer to start managing relationships and
                 tracking balances.
               </p>

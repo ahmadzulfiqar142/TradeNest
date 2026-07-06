@@ -41,8 +41,8 @@ export default async function EditProductPage({
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Edit product</h1>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-2xl font-bold text-foreground">Edit product</h1>
+            <p className="text-sm text-muted-foreground">
               Update product details, image, price, and stock.
             </p>
           </div>

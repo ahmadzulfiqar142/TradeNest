@@ -22,15 +22,14 @@ export default async function NewProductPage() {
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-100">Add product</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-foreground">Add product</h1>
+            <p className="text-sm text-muted-foreground">
               Create a product with image, price, stock, and category.
             </p>
           </div>
           <Button
             variant="outline"
             asChild
-            className="border-gray-700 text-gray-300 hover:bg-gray-800"
           >
             <Link href="/products">
               <ArrowLeft className="h-4 w-4" />
@@ -38,7 +37,7 @@ export default async function NewProductPage() {
             </Link>
           </Button>
         </div>
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+        <div className="rounded-lg border border-border bg-card p-6">
           <CreateProductForm
             workspaceId={workspaceId}
             workspaceSlug=""

@@ -29,6 +29,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){if(localStorage.getItem('theme')==='dark'){document.documentElement.classList.add('dark');}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>

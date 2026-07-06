@@ -230,7 +230,7 @@ export function SalesTable({ sales, workspaceId }: SalesTableProps) {
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                               SALE_STATUS_COLORS[sale.status] ??
-                              "bg-gray-100 text-gray-800"
+                              "bg-muted text-muted-foreground"
                             }`}
                           >
                             {SALE_STATUS_LABELS[sale.status] ?? sale.status}
@@ -242,7 +242,7 @@ export function SalesTable({ sales, workspaceId }: SalesTableProps) {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-gray-300 hover:text-white hover:bg-gray-700"
+                                className="text-muted-foreground hover:text-foreground hover:bg-muted"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="h-4 w-4" />
