@@ -25,10 +25,10 @@ export default async function CustomerDetailsPage({
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">
+          <h1 className="text-3xl font-bold text-foreground">
             {result.customer.first_name} {result.customer.last_name}
           </h1>
-          <p className="text-gray-400">Customer details and transaction history</p>
+          <p className="text-muted-foreground">Customer details and transaction history</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" asChild>

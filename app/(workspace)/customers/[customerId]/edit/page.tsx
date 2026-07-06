@@ -32,8 +32,8 @@ export default async function EditCustomerPage({
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-100">Edit customer</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-foreground">Edit customer</h1>
+            <p className="text-sm text-muted-foreground">
               Update customer details, contact information, and balance.
             </p>
           </div>

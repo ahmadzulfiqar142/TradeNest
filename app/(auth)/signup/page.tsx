@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo Section */}
         <div className="text-center space-y-2">
@@ -29,19 +29,19 @@ export default function SignupPage() {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white">Create Account</h1>
-          <p className="text-slate-400">
+          <h1 className="text-3xl font-bold text-foreground">Create Account</h1>
+          <p className="text-muted-foreground">
             Sign up to get started with your dashboard
           </p>
         </div>
 
         {/* Form */}
-        <div className="space-y-6 bg-slate-800/50 backdrop-blur p-8 rounded-xl border border-slate-700">
+        <div className="space-y-6 bg-card backdrop-blur p-8 rounded-xl border border-border">
           <SignupForm />
         </div>
 
         {/* Sign In Link */}
-        <div className="text-center text-slate-400">
+        <div className="text-center text-muted-foreground">
           Already have an account?{" "}
           <Link
             href="/login"

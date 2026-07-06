@@ -21,8 +21,8 @@ export default async function ProfileSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile</h1>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+        <p className="text-sm text-muted-foreground">
           Manage your personal information.
         </p>
       </div>

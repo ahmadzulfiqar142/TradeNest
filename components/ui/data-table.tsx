@@ -41,7 +41,6 @@ export function DataTable<T extends { id: string | number }>({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Filter data based on search
   const filteredData = useMemo(() => {
     return data.filter((row) =>
       columns.some((col) => {
@@ -54,21 +53,17 @@ export function DataTable<T extends { id: string | number }>({
     );
   }, [data, searchTerm, columns]);
 
-  // Sort data
   const sortedData = useMemo(() => {
     if (!sortField) return filteredData;
-
     return [...filteredData].sort((a, b) => {
       const aVal = a[sortField];
       const bVal = b[sortField];
-
       if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
       if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
       return 0;
     });
   }, [filteredData, sortField, sortDirection]);
 
-  // Paginate data
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -86,11 +81,8 @@ export function DataTable<T extends { id: string | number }>({
 
   const toggleRowSelection = (id: string | number) => {
     const newSelected = new Set(selectedRows);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
     setSelectedRows(newSelected);
   };
 
@@ -104,18 +96,16 @@ export function DataTable<T extends { id: string | number }>({
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       {title && (
         <div>
           <h3 className="text-lg font-semibold text-foreground">{title}</h3>
         </div>
       )}
 
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex-1 min-w-0 w-full sm:w-auto">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
               placeholder={searchPlaceholder}
@@ -124,20 +114,20 @@ export function DataTable<T extends { id: string | number }>({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-10 pr-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full pl-10 pr-3 py-2 bg-input border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
 
         <div className="flex gap-2">
           <button
-            className="p-2 text-gray-400 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             aria-label="Filter"
           >
             <Filter className="w-4 h-4" />
           </button>
           <button
-            className="p-2 text-gray-400 hover:bg-gray-800 rounded-lg transition-colors"
+            className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
             aria-label="Download"
           >
             <Download className="w-4 h-4" />
@@ -145,12 +135,11 @@ export function DataTable<T extends { id: string | number }>({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border border-gray-700 overflow-hidden">
+      <div className="rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-gray-700 border-b border-gray-600">
+              <tr className="bg-muted border-b border-border">
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
@@ -159,7 +148,7 @@ export function DataTable<T extends { id: string | number }>({
                       selectedRows.size === paginatedData.length
                     }
                     onChange={toggleSelectAll}
-                    className="w-4 h-4 rounded border-gray-600 cursor-pointer"
+                    className="w-4 h-4 rounded border-border cursor-pointer"
                     aria-label="Select all"
                   />
                 </th>
@@ -167,14 +156,14 @@ export function DataTable<T extends { id: string | number }>({
                   <th
                     key={String(col.key)}
                     className={cn(
-                      "px-4 py-3 text-left font-semibold text-gray-200",
+                      "px-4 py-3 text-left font-semibold text-foreground",
                       col.width,
                     )}
                   >
                     {col.sortable ? (
                       <button
                         onClick={() => toggleSort(col.key)}
-                        className="flex items-center gap-2 hover:text-blue-400 transition-colors"
+                        className="flex items-center gap-2 hover:text-primary transition-colors"
                       >
                         {col.label}
                         {sortField === col.key ? (
@@ -199,21 +188,21 @@ export function DataTable<T extends { id: string | number }>({
                 paginatedData.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-gray-700 hover:bg-gray-800 transition-colors"
+                    className="border-b border-border hover:bg-muted/50 transition-colors"
                   >
                     <td className="px-4 py-3">
                       <input
                         type="checkbox"
                         checked={selectedRows.has(row.id)}
                         onChange={() => toggleRowSelection(row.id)}
-                        className="w-4 h-4 rounded border-gray-600 cursor-pointer"
+                        className="w-4 h-4 rounded border-border cursor-pointer"
                         aria-label={`Select row ${row.id}`}
                       />
                     </td>
                     {columns.map((col) => (
                       <td
                         key={String(col.key)}
-                        className={cn("px-4 py-3 text-gray-300", col.width)}
+                        className={cn("px-4 py-3 text-foreground", col.width)}
                       >
                         {col.render
                           ? col.render(row[col.key], row)
@@ -228,7 +217,7 @@ export function DataTable<T extends { id: string | number }>({
                     colSpan={columns.length + 1}
                     className="px-4 py-8 text-center"
                   >
-                    <p className="text-gray-400 text-sm">No data found</p>
+                    <p className="text-muted-foreground text-sm">No data found</p>
                   </td>
                 </tr>
               )}
@@ -237,8 +226,7 @@ export function DataTable<T extends { id: string | number }>({
         </div>
       </div>
 
-      {/* Pagination */}
-      <div className="flex items-center justify-between text-sm text-gray-400">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
         <p>
           Showing{" "}
           {paginatedData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}{" "}
@@ -249,7 +237,7 @@ export function DataTable<T extends { id: string | number }>({
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1 rounded border border-gray-700 hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 transition-colors"
           >
             Previous
           </button>
@@ -261,8 +249,8 @@ export function DataTable<T extends { id: string | number }>({
                 className={cn(
                   "px-2 py-1 rounded border transition-colors",
                   currentPage === i + 1
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "border-gray-700 hover:bg-gray-800",
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border hover:bg-muted",
                 )}
               >
                 {i + 1}
@@ -272,7 +260,7 @@ export function DataTable<T extends { id: string | number }>({
           <button
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
-            className="px-3 py-1 rounded border border-gray-700 hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-50 transition-colors"
           >
             Next
           </button>

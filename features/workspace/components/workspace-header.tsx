@@ -25,8 +25,10 @@ export function TopNav({ onMenuClick, isMobileMenuOpen }: TopNavProps) {
 
   useEffect(() => {
     setMounted(true);
-    // Check current dark mode state
-    const isDarkMode = document.documentElement.classList.contains("dark");
+    const saved = localStorage.getItem("theme");
+    const isDarkMode = saved === "dark";
+    if (isDarkMode) document.documentElement.classList.add("dark");
+    else document.documentElement.classList.remove("dark");
     setIsDark(isDarkMode);
   }, []);
 

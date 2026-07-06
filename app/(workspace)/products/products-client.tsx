@@ -99,11 +99,11 @@ export default function ProductsClient({
               style={{ backgroundImage: `url(${row.image_url})` }}
             />
           ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-gray-50">
-              <ImageIcon className="h-4 w-4 text-gray-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border bg-muted">
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
             </div>
           )}
-          <span className="font-medium text-white">{value}</span>
+          <span className="font-medium text-foreground">{value}</span>
         </div>
       ),
     },
@@ -167,7 +167,7 @@ export default function ProductsClient({
             <Button
               variant="ghost"
               size="sm"
-              className="text-gray-300 hover:text-white hover:bg-gray-700"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>
@@ -202,8 +202,8 @@ export default function ProductsClient({
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Products</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl font-bold text-foreground">Products</h1>
+          <p className="text-muted-foreground">
             Manage products, images, categories, and stock.
           </p>
         </div>
@@ -216,46 +216,46 @@ export default function ProductsClient({
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <p className="text-sm text-gray-400">Active Products</p>
-          <p className="text-2xl font-bold text-gray-100">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Active Products</p>
+          <p className="text-2xl font-bold text-foreground">
             {stats.activeProducts}
           </p>
         </div>
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <p className="text-sm text-gray-400">Categories</p>
-          <p className="text-2xl font-bold text-gray-100">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Categories</p>
+          <p className="text-2xl font-bold text-foreground">
             {stats.totalCategories}
           </p>
         </div>
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <p className="text-sm text-gray-400">Low Stock</p>
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Low Stock</p>
           <p className="text-2xl font-bold text-yellow-400">
             {stats.lowStockCount}
           </p>
         </div>
-        <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-          <p className="text-sm text-gray-400">Inventory Value</p>
-          <p className="text-2xl font-bold text-gray-100">
+        <div className="rounded-lg border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">Inventory Value</p>
+          <p className="text-2xl font-bold text-foreground">
             Rs {stats.inventoryValue.toLocaleString()}
           </p>
         </div>
       </div>
 
-      <div className="rounded-lg border border-gray-700 bg-gray-800">
+      <div className="rounded-lg border border-border bg-card">
         <div className="p-6">
-          <h2 className="text-xl font-semibold text-gray-100 mb-4">
+          <h2 className="text-xl font-semibold text-foreground mb-4">
             Products List
           </h2>
           {products.length === 0 ? (
-            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-gray-600 text-center">
-              <div className="rounded-full bg-gray-700 p-3">
-                <Boxes className="h-6 w-6 text-gray-400" />
+            <div className="flex min-h-72 flex-col items-center justify-center rounded-lg border border-dashed border-border text-center">
+              <div className="rounded-full bg-muted p-3">
+                <Boxes className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h2 className="mt-4 text-lg font-semibold text-gray-200">
+              <h2 className="mt-4 text-lg font-semibold text-foreground">
                 No products yet
               </h2>
-              <p className="mt-1 max-w-sm text-sm text-gray-400">
+              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
                 Add your first product with opening stock to start building
                 inventory history.
               </p>

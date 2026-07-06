@@ -72,7 +72,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
             </div>
             <span
               className={`self-start inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                SALE_STATUS_COLORS[sale.status] ?? "bg-gray-100 text-gray-800"
+                SALE_STATUS_COLORS[sale.status] ?? "bg-muted text-muted-foreground"
               }`}
             >
               {SALE_STATUS_LABELS[sale.status] ?? sale.status}
