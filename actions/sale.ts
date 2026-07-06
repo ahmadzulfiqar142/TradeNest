@@ -65,17 +65,9 @@ async function generateInvoiceNumber(
 
 export async function createSale(
   workspaceId: string,
-  _prev: SaleActionState,
-  formData: FormData,
+  data: import("@/schemas/sale").CreateSaleFormValues,
 ): Promise<SaleActionState> {
-  let parsed;
-  try {
-    const raw = formData.get("payload")?.toString();
-    if (!raw) return { message: "Invalid request", success: false };
-    parsed = createSaleSchema.safeParse(JSON.parse(raw));
-  } catch {
-    return { message: "Invalid request data", success: false };
-  }
+  const parsed = createSaleSchema.safeParse(data);
 
   if (!parsed.success) {
     return {

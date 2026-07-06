@@ -5,19 +5,19 @@ export const saleItemSchema = z.object({
   productName: z.string().min(1),
   quantity: z.number().int().min(1, "Quantity must be at least 1"),
   unitPrice: z.number().min(0, "Price must be 0 or more"),
-  discount: z.number().min(0).max(100).default(0),
+  discount: z.number().min(0).max(100),
   total: z.number().min(0),
   unit: z.string().nullable().optional(),
 });
 
 export const createSaleSchema = z.object({
-  customerId: z.string().nullable().optional(),
+  customerId: z.string().optional().nullable(),
   saleDate: z.string().min(1, "Sale date is required"),
-  discount: z.number().min(0).default(0),
+  discount: z.number().min(0),
   notes: z.string().trim().optional().nullable(),
   items: z.array(saleItemSchema).min(1, "At least one item is required"),
   // Optional initial payment
-  paidAmount: z.number().min(0).default(0),
+  paidAmount: z.number().min(0),
   paymentMethod: z.string().optional().nullable(),
 });
 

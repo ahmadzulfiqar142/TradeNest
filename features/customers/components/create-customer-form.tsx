@@ -1,15 +1,27 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { Plus, Save } from "lucide-react";
-import {
-  createCustomer,
-  updateCustomer,
-  type CustomerActionState,
-} from "@/actions/customer";
+import { createCustomer, updateCustomer } from "@/actions/customer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import {
+  createCustomerSchema,
+  type CreateCustomerFormValues,
+} from "@/schemas/customer";
 
 type CreateCustomerFormProps = {
   workspaceId: string;
@@ -26,190 +38,190 @@ type CreateCustomerFormProps = {
   };
 };
 
-const initialCustomerActionState: CustomerActionState = {
-  message: "",
-  success: false,
-};
-
 export function CreateCustomerForm({
   workspaceId,
   mode = "create",
   customer,
 }: CreateCustomerFormProps) {
-  const customerAction =
-    mode === "edit" && customer
-      ? updateCustomer.bind(null, workspaceId, customer.id)
-      : createCustomer.bind(null, workspaceId);
-  const [state, formAction, pending] = useActionState(
-    customerAction,
-    initialCustomerActionState,
-  );
+  const router = useRouter();
   const { success, error } = useToast();
   const isEditMode = mode === "edit";
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.success) {
-        success(state.message);
-      } else {
-        error(state.message);
-      }
-    }
-  }, [state, success, error]);
+  const form = useForm<CreateCustomerFormValues>({
+    resolver: zodResolver(createCustomerSchema),
+    defaultValues: {
+      firstName: customer?.first_name ?? "",
+      lastName: customer?.last_name ?? "",
+      phone: customer?.phone ?? "",
+      address: customer?.address ?? undefined,
+      city: customer?.city ?? undefined,
+      notes: customer?.notes ?? undefined,
+    },
+  });
 
-  // Split full name into first and last for the form
-  const firstName = customer?.first_name ?? "";
-  const lastName = customer?.last_name ?? "";
+  const onSubmit = async (data: CreateCustomerFormValues) => {
+    const result =
+      isEditMode && customer
+        ? await updateCustomer(workspaceId, customer.id, data)
+        : await createCustomer(workspaceId, data);
+
+    if (result.success) {
+      success(result.message);
+      router.push("/customers");
+    } else {
+      error(result.message);
+    }
+  };
 
   return (
-    <form action={formAction} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* First Name */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="firstName"
-            className="text-sm font-medium text-foreground"
-          >
-            First Name *
-          </label>
-          <input
-            type="text"
-            id="firstName"
-            name="firstName"
-            defaultValue={firstName}
-            placeholder="Enter first name"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
+    <Card>
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>First Name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {/* Last Name */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="lastName"
-            className="text-sm font-medium text-foreground"
-          >
-            Last Name *
-          </label>
-          <input
-            type="text"
-            id="lastName"
-            name="lastName"
-            defaultValue={lastName}
-            placeholder="Enter last name"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter last name"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {/* Phone */}
-        <div className="flex flex-col gap-2">
-          <label
-            htmlFor="phone"
-            className="text-sm font-medium text-foreground"
-          >
-            Phone Number *
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            name="phone"
-            defaultValue={customer?.phone ?? ""}
-            placeholder="Enter phone number"
-            className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-            required
-          />
-        </div>
-      </div>
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="Enter phone number"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-      {/* Address */}
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor="address"
-          className="text-sm font-medium text-foreground"
-        >
-          Address
-        </label>
-        <input
-          type="text"
-          id="address"
-          name="address"
-          defaultValue={customer?.address ?? ""}
-          placeholder="Street address"
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+            <FormField
+              control={form.control}
+              name="address"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Street address"
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      {/* City */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="city" className="text-sm font-medium text-foreground">
-          City
-        </label>
-        <input
-          type="text"
-          id="city"
-          name="city"
-          defaultValue={customer?.city ?? ""}
-          placeholder="City"
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="City"
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      {/* Notes */}
-      <div className="flex flex-col gap-2">
-        <label htmlFor="notes" className="text-sm font-medium text-foreground">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          defaultValue={customer?.notes ?? ""}
-          placeholder="Additional notes"
-          rows={3}
-          maxLength={500}
-          className="px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-        />
-      </div>
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Additional notes"
+                      rows={3}
+                      maxLength={500}
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      {/* Form Actions */}
-      <div className="flex gap-3 justify-end">
-        <button
-          type="button"
-          onClick={() => {
-            const form = document.querySelector("form");
-            if (form) form.reset();
-          }}
-          className="px-6 py-2 border border-border rounded-lg text-foreground hover:bg-secondary transition-colors font-medium"
-        >
-          Reset
-        </button>
-        <Button type="submit" disabled={pending} className="px-6 py-2">
-          {isEditMode ? (
-            <>
-              <Save className="h-4 w-4" />
-              {pending ? "Saving..." : "Save changes"}
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" />
-              {pending ? "Creating..." : "Add Customer"}
-            </>
-          )}
-        </Button>
-      </div>
-
-      {state.message ? (
-        <p
-          className={
-            state.success
-              ? "text-sm font-medium text-green-400"
-              : "text-sm font-medium text-red-400"
-          }
-          aria-live="polite"
-        >
-          {state.message}
-        </p>
-      ) : null}
-    </form>
+            <div className="flex gap-3 justify-end">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.back()}
+                disabled={form.formState.isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {isEditMode ? (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {form.formState.isSubmitting ? "Saving..." : "Save changes"}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {form.formState.isSubmitting
+                      ? "Creating..."
+                      : "Add Customer"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

@@ -15,6 +15,7 @@ export default async function ProductsPage() {
         "id, name, sku, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, is_active, created_at",
       )
       .eq("workspace_id", workspaceId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase
       .from("categories")

@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { createProductSchema } from "@/schemas/product";
 
@@ -55,25 +54,10 @@ async function getAuthorizedUser(workspaceId: string) {
 export async function createProduct(
   workspaceId: string,
   workspaceSlug: string,
-  _previousState: ProductActionState,
-  formData: FormData,
+  data: import("@/schemas/product").CreateProductFormValues,
 ): Promise<ProductActionState> {
-  void workspaceSlug; // slug no longer used in URLs
-  const parsed = createProductSchema.safeParse({
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    barcode: formData.get("barcode"),
-    description: formData.get("description"),
-    imageUrl: formData.get("imageUrl"),
-    categoryId: formData.get("categoryId"),
-    newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: formData.get("purchasePrice"),
-    sellingPrice: formData.get("sellingPrice"),
-    stockQuantity: formData.get("stockQuantity"),
-    minStockQuantity: formData.get("minStockQuantity"),
-    expiryDate: formData.get("expiryDate"),
-    isActive: formData.get("isActive") === "true",
-  });
+  void workspaceSlug;
+  const parsed = createProductSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -164,39 +148,21 @@ export async function createProduct(
   revalidatePath("/products");
   revalidatePath("/");
 
-  if (inventoryHistoryWarning) {
-    return {
-      message: `Product created.${inventoryHistoryWarning}`,
-      success: true,
-    };
-  }
-
-  redirect("/products");
+  return {
+    message: inventoryHistoryWarning
+      ? `Product created.${inventoryHistoryWarning}`
+      : "Product created successfully.",
+    success: true,
+  };
 }
 
 export async function updateProduct(
   workspaceId: string,
   workspaceSlug: string,
   productId: string,
-  _previousState: ProductActionState,
-  formData: FormData,
+  data: import("@/schemas/product").CreateProductFormValues,
 ): Promise<ProductActionState> {
-  const parsed = createProductSchema.safeParse({
-    name: formData.get("name"),
-    sku: formData.get("sku"),
-    barcode: formData.get("barcode"),
-    description: formData.get("description"),
-    imageUrl: formData.get("imageUrl"),
-    categoryId: formData.get("categoryId"),
-    newCategoryName: formData.get("newCategoryName"),
-    purchasePrice: formData.get("purchasePrice"),
-    sellingPrice: formData.get("sellingPrice"),
-    stockQuantity: formData.get("stockQuantity"),
-    minStockQuantity: formData.get("minStockQuantity"),
-    expiryDate: formData.get("expiryDate"),
-    trackInventory: formData.get("trackInventory") === "true",
-    isActive: formData.get("isActive") === "true",
-  });
+  const parsed = createProductSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -213,8 +179,8 @@ export async function updateProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
-  const newImageUrl = formData.get("imageUrl")?.toString() ?? null;
-  const oldImageUrl = formData.get("oldImageUrl")?.toString() ?? null;
+  const newImageUrl = data.imageUrl ?? null;
+  const oldImageUrl = (data as { oldImageUrl?: string }).oldImageUrl ?? null;
 
   // Fetch existing product (including current image)
   const { data: existingProduct, error: existingProductError } = await supabase
@@ -322,14 +288,12 @@ export async function updateProduct(
   revalidatePath(`/products/${productId}/edit`);
   revalidatePath("/");
 
-  if (inventoryHistoryWarning) {
-    return {
-      message: `Product updated.${inventoryHistoryWarning}`,
-      success: true,
-    };
-  }
-
-  redirect(`/${workspaceSlug}/products`);
+  return {
+    message: inventoryHistoryWarning
+      ? `Product updated.${inventoryHistoryWarning}`
+      : "Product updated successfully.",
+    success: true,
+  };
 }
 
 export async function deleteProduct(
@@ -342,14 +306,45 @@ export async function deleteProduct(
     return { message: error ?? "Unauthorized", success: false };
   }
 
+  const { data: existingProduct, error: fetchError } = await supabase
+    .from("products")
+    .select("image_url")
+    .eq("id", productId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
+  if (fetchError || !existingProduct) {
+    return { message: "Product not found or you don't have permission to delete it.", success: false };
+  }
+
+  const admin = createAdminClient();
+  const { count: saleCount } = await admin
+    .from("sale_items")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (saleCount && saleCount > 0) {
+    return {
+      message: "This product cannot be deleted because it is used in sales records.",
+      success: false,
+    };
+  }
+
   const { error: productError } = await supabase
     .from("products")
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq("id", productId)
     .eq("workspace_id", workspaceId);
 
   if (productError) {
     return { message: productError.message, success: false };
+  }
+
+  if (existingProduct.image_url) {
+    const imagePath = getStoragePath(existingProduct.image_url);
+    if (imagePath) {
+      await supabase.storage.from("product-images").remove([imagePath]);
+    }
   }
 
   revalidatePath("/products");

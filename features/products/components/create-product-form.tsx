@@ -1,22 +1,30 @@
 "use client";
 
-import { useActionState, useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { ImageIcon, Plus, Save, Upload } from "lucide-react";
-import {
-  createProduct,
-  updateProduct,
-  type ProductActionState,
-} from "@/actions/product";
+import { createProduct, updateProduct } from "@/actions/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { createClient } from "@/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  createProductSchema,
+  type CreateProductFormValues,
+} from "@/schemas/product";
 
-type CategoryOption = {
-  id: string;
-  name: string;
-};
+type CategoryOption = { id: string; name: string };
 
 type CreateProductFormProps = {
   workspaceId: string;
@@ -39,39 +47,25 @@ type CreateProductFormProps = {
   };
 };
 
-const initialProductActionState: ProductActionState = {
-  message: "",
-  success: false,
-};
-
 const PRODUCT_IMAGE_BUCKET = "product-images";
-
-type UploadError = {
-  message: string;
-  statusCode?: string | number;
-};
+type UploadError = { message: string; statusCode?: string | number };
 
 function getUploadErrorMessage(error: UploadError) {
-  const message = error.message.toLowerCase();
-
+  const msg = error.message.toLowerCase();
   if (
-    message.includes("bucket") ||
-    message.includes("not found") ||
+    msg.includes("bucket") ||
+    msg.includes("not found") ||
     error.statusCode === 404 ||
     error.statusCode === "404"
-  ) {
+  )
     return "Product image bucket is not ready. Run supabase/storage-policies.sql in Supabase.";
-  }
-
   if (
-    message.includes("row-level security") ||
-    message.includes("policy") ||
+    msg.includes("row-level security") ||
+    msg.includes("policy") ||
     error.statusCode === 403 ||
     error.statusCode === "403"
-  ) {
+  )
     return "Image upload is blocked by storage policies. Run supabase/storage-policies.sql in Supabase.";
-  }
-
   return error.message;
 }
 
@@ -82,30 +76,30 @@ export function CreateProductForm({
   mode = "create",
   product,
 }: CreateProductFormProps) {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
-  const productAction =
-    mode === "edit" && product
-      ? updateProduct.bind(null, workspaceId, workspaceSlug, product.id)
-      : createProduct.bind(null, workspaceId, workspaceSlug);
-  const [state, formAction, pending] = useActionState(
-    productAction,
-    initialProductActionState,
-  );
   const { success, error } = useToast();
   const isEditMode = mode === "edit";
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.success) {
-        success(state.message);
-      } else {
-        error(state.message);
-      }
-    }
-  }, [state, success, error]);
+  const form = useForm<CreateProductFormValues>({
+    resolver: zodResolver(createProductSchema),
+    defaultValues: {
+      name: product?.name ?? "",
+      sku: product?.sku ?? undefined,
+      barcode: product?.barcode ?? undefined,
+      description: product?.description ?? undefined,
+      imageUrl: product?.image_url ?? undefined,
+      categoryId: product?.category_id ?? undefined,
+      newCategoryName: undefined,
+      purchasePrice: product?.purchase_price ?? 0,
+      sellingPrice: product?.selling_price ?? 0,
+      stockQuantity: product?.stock_quantity ?? 0,
+      expiryDate: product?.expiry_date ?? undefined,
+      isActive: product?.is_active ?? true,
+    },
+  });
 
   async function handleImageUpload(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -116,303 +110,363 @@ export function CreateProductForm({
       setUploadMessage("Image must be 2MB or smaller.");
       return;
     }
-
     setUploading(true);
     setUploadMessage("");
-
     const supabase = createClient();
-    const fileExtension = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
-    const filePath = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${fileExtension}`;
-
-    const { error } = await supabase.storage
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg";
+    const filePath = `${workspaceId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
       .from(PRODUCT_IMAGE_BUCKET)
       .upload(filePath, file, { cacheControl: "3600", upsert: false });
-
-    if (error) {
-      setUploadMessage(getUploadErrorMessage(error));
+    if (uploadError) {
+      setUploadMessage(getUploadErrorMessage(uploadError));
       setUploading(false);
       return;
     }
-
     const { data } = supabase.storage
       .from(PRODUCT_IMAGE_BUCKET)
       .getPublicUrl(filePath);
-
-    setImageUrl(data.publicUrl);
+    form.setValue("imageUrl", data.publicUrl);
     setUploadMessage("Image uploaded successfully.");
     setUploading(false);
   }
 
+  const onSubmit = async (data: CreateProductFormValues) => {
+    const result =
+      isEditMode && product
+        ? await updateProduct(workspaceId, workspaceSlug, product.id, data)
+        : await createProduct(workspaceId, workspaceSlug, data);
+    if (result.success) {
+      success(result.message);
+      router.push("/products");
+    } else error(result.message);
+  };
+
+  const imageUrl = form.watch("imageUrl");
+
   return (
-    <form action={formAction} className="space-y-5">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="name" className="text-gray-300">
-            Product name
-          </Label>
-          <Input
-            id="name"
-            name="name"
-            placeholder="Classic cotton shirt"
-            defaultValue={product?.name ?? ""}
-            required
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="sku" className="text-gray-300">
-            SKU
-          </Label>
-          <Input
-            id="sku"
-            name="sku"
-            placeholder="SHIRT-001"
-            defaultValue={product?.sku ?? ""}
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="barcode" className="text-gray-300">
-            Barcode
-          </Label>
-          <Input
-            id="barcode"
-            name="barcode"
-            placeholder="Optional"
-            defaultValue={product?.barcode ?? ""}
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="productImage" className="text-gray-300">
-            Product image
-          </Label>
-          <input type="hidden" name="imageUrl" value={imageUrl} />
-          <div className="flex flex-col gap-4 rounded-lg border border-gray-600 p-4 sm:flex-row sm:items-center bg-gray-700">
-            {imageUrl ? (
-              <div
-                className="h-24 w-24 rounded-md border border-gray-600 bg-cover bg-center"
-                style={{ backgroundImage: `url(${imageUrl})` }}
-                aria-label="Product image preview"
+    <Card>
+      <CardContent className="pt-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Product name *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Classic cotton shirt"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-md border border-gray-600 bg-gray-800">
-                <ImageIcon className="h-8 w-8 text-gray-400" />
-              </div>
-            )}
-            <div className="flex-1 space-y-3">
-              <input
-                ref={fileInputRef}
-                id="productImage"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    void handleImageUpload(file);
-                  }
-                }}
+
+              <FormField
+                control={form.control}
+                name="sku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SKU</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="SHIRT-001"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="border-gray-600 text-gray-300 hover:bg-gray-600"
-                >
-                  <Upload className="h-4 w-4" />
-                  {uploading
-                    ? "Uploading..."
-                    : imageUrl
-                      ? "Replace image"
-                      : "Upload image"}
-                </Button>
-                {imageUrl ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setImageUrl("");
-                      setUploadMessage("");
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
-                    }}
-                    className="text-gray-300 hover:bg-gray-600"
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
-              {uploadMessage ? (
-                <p className="text-sm text-gray-400" aria-live="polite">
-                  {uploadMessage}
-                </p>
-              ) : null}
+
+              <FormField
+                control={form.control}
+                name="barcode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Barcode</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Optional"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Image upload — managed via form.setValue */}
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={() => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Product image</FormLabel>
+                    <FormControl>
+                      <div className="flex flex-col gap-4 rounded-lg border border-border p-4 sm:flex-row sm:items-center">
+                        {imageUrl ? (
+                          <div
+                            className="h-24 w-24 rounded-md border border-border bg-cover bg-center"
+                            style={{ backgroundImage: `url(${imageUrl})` }}
+                          />
+                        ) : (
+                          <div className="flex h-24 w-24 items-center justify-center rounded-md border border-border bg-muted">
+                            <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-3">
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) void handleImageUpload(f);
+                            }}
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploading}
+                            >
+                              <Upload className="h-4 w-4" />
+                              {uploading
+                                ? "Uploading..."
+                                : imageUrl
+                                  ? "Replace image"
+                                  : "Upload image"}
+                            </Button>
+                            {imageUrl && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                  form.setValue("imageUrl", undefined);
+                                  setUploadMessage("");
+                                  if (fileInputRef.current)
+                                    fileInputRef.current.value = "";
+                                }}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          {uploadMessage && (
+                            <p
+                              className="text-sm text-muted-foreground"
+                              aria-live="polite"
+                            >
+                              {uploadMessage}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                        className="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted"
+                      >
+                        <option value="">Uncategorized</option>
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="newCategoryName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>New category</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Or type a new one"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="purchasePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase price *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="sellingPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Selling price *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="stockQuantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening stock *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="0"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="expiryDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Expiry date</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="date"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Optional product notes"
+                        {...field}
+                        value={field.value || ""}
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center gap-3 space-y-0">
+                    <FormControl>
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4 rounded border-input"
+                        disabled={form.formState.isSubmitting}
+                      />
+                    </FormControl>
+                    <FormLabel className="cursor-pointer">Active</FormLabel>
+                  </FormItem>
+                )}
+              />
             </div>
-          </div>
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="categoryId" className="text-gray-300">
-            Category
-          </Label>
-          <select
-            id="categoryId"
-            name="categoryId"
-            className="flex h-12 w-full rounded-lg border border-gray-600 bg-gray-700 px-4 py-2 text-base text-gray-100 transition-all focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-            defaultValue={product?.category_id ?? ""}
-          >
-            <option value="">Uncategorized</option>
-            {categories.map((category) => (
-              <option
-                key={category.id}
-                value={category.id}
-                className="bg-gray-700"
-              >
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="newCategoryName" className="text-gray-300">
-            New category
-          </Label>
-          <Input
-            id="newCategoryName"
-            name="newCategoryName"
-            placeholder="Optional"
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="purchasePrice" className="text-gray-300">
-            Purchase price
-          </Label>
-          <Input
-            id="purchasePrice"
-            name="purchasePrice"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={product?.purchase_price ?? 0}
-            required
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="sellingPrice" className="text-gray-300">
-            Selling price
-          </Label>
-          <Input
-            id="sellingPrice"
-            name="sellingPrice"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={product?.selling_price ?? 0}
-            required
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="stockQuantity" className="text-gray-300">
-            Opening stock
-          </Label>
-          <Input
-            id="stockQuantity"
-            name="stockQuantity"
-            type="number"
-            min="0"
-            step="1"
-            defaultValue={product?.stock_quantity ?? 0}
-            required
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="expiryDate" className="text-gray-300">
-            Expiry date
-          </Label>
-          <Input
-            id="expiryDate"
-            name="expiryDate"
-            type="date"
-            defaultValue={product?.expiry_date ?? ""}
-            className="bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="description" className="text-gray-300">
-            Description
-          </Label>
-          <Input
-            id="description"
-            name="description"
-            placeholder="Optional product notes"
-            defaultValue={product?.description ?? ""}
-            className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-600"
-          />
-        </div>
-
-        <div className="space-y-2 flex items-center gap-3">
-          <input
-            id="isActive"
-            name="isActive"
-            type="checkbox"
-            defaultChecked={product?.is_active ?? true}
-            value="true"
-            className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-blue-600"
-          />
-          <Label htmlFor="isActive" className="text-gray-300 cursor-pointer">
-            Active
-          </Label>
-        </div>
-      </div>
-
-      {state.message ? (
-        <p
-          className={
-            state.success
-              ? "text-sm font-medium text-green-400"
-              : "text-sm font-medium text-red-400"
-          }
-          aria-live="polite"
-        >
-          {state.message}
-        </p>
-      ) : null}
-
-      <Button
-        type="submit"
-        disabled={pending}
-        className="bg-blue-600 hover:bg-blue-700 text-white"
-      >
-        {isEditMode ? (
-          <Save className="h-4 w-4" />
-        ) : (
-          <Plus className="h-4 w-4" />
-        )}
-        {pending
-          ? isEditMode
-            ? "Saving..."
-            : "Creating..."
-          : isEditMode
-            ? "Save changes"
-            : "Create product"}
-      </Button>
-    </form>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {isEditMode ? (
+                <Save className="h-4 w-4 mr-2" />
+              ) : (
+                <Plus className="h-4 w-4 mr-2" />
+              )}
+              {form.formState.isSubmitting
+                ? isEditMode
+                  ? "Saving..."
+                  : "Creating..."
+                : isEditMode
+                  ? "Save changes"
+                  : "Create product"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

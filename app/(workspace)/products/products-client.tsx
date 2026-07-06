@@ -139,11 +139,11 @@ export default function ProductsClient({
       render: (value: number) => `Rs ${Number(value).toFixed(2)}`,
     },
     {
-      key: "stock_quantity" as const,
+      key: "is_active" as const,
       label: "Status",
       sortable: false,
-      render: (value: number, row: Product) => {
-        const isLowStock = value <= (row.min_stock_quantity ?? 0);
+      render: (_value: boolean | null, row: Product) => {
+        const isLowStock = row.stock_quantity <= (row.min_stock_quantity ?? 0);
         const status = isLowStock ? "Low Stock" : "In Stock";
         const colorClass = isLowStock
           ? "bg-yellow-100 text-yellow-800"

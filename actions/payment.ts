@@ -89,18 +89,9 @@ async function updateSaleStatus(
 
 export async function createPayment(
   workspaceId: string,
-  _previousState: PaymentActionState,
-  formData: FormData,
+  data: import("@/schemas/payment").CreatePaymentFormValues,
 ): Promise<PaymentActionState> {
-  const parsed = createPaymentSchema.safeParse({
-    customerId: formData.get("customerId")?.toString() || "",
-    saleId: formData.get("saleId")?.toString() || null,
-    amount: parseFloat(formData.get("amount")?.toString() || "0"),
-    paymentMethod: formData.get("paymentMethod")?.toString() || "",
-    paymentDate: formData.get("paymentDate")?.toString() || "",
-    referenceNumber: formData.get("referenceNumber")?.toString() || null,
-    notes: formData.get("notes")?.toString() || null,
-  });
+  const parsed = createPaymentSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
@@ -161,18 +152,9 @@ export async function createPayment(
 export async function updatePayment(
   workspaceId: string,
   paymentId: string,
-  _previousState: PaymentActionState,
-  formData: FormData,
+  data: import("@/schemas/payment").UpdatePaymentFormValues,
 ): Promise<PaymentActionState> {
-  const parsed = updatePaymentSchema.safeParse({
-    customerId: formData.get("customerId")?.toString() || "",
-    saleId: formData.get("saleId")?.toString() || null,
-    amount: parseFloat(formData.get("amount")?.toString() || "0"),
-    paymentMethod: formData.get("paymentMethod")?.toString() || "",
-    paymentDate: formData.get("paymentDate")?.toString() || "",
-    referenceNumber: formData.get("referenceNumber")?.toString() || null,
-    notes: formData.get("notes")?.toString() || null,
-  });
+  const parsed = updatePaymentSchema.safeParse(data);
 
   if (!parsed.success) {
     return {
