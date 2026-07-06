@@ -9,9 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { createCustomerSchema, type CreateCustomerFormValues } from "@/schemas/customer";
+import {
+  createCustomerSchema,
+  type CreateCustomerFormValues,
+} from "@/schemas/customer";
 
 type CreateCustomerFormProps = {
   workspaceId: string;
@@ -28,7 +38,11 @@ type CreateCustomerFormProps = {
   };
 };
 
-export function CreateCustomerForm({ workspaceId, mode = "create", customer }: CreateCustomerFormProps) {
+export function CreateCustomerForm({
+  workspaceId,
+  mode = "create",
+  customer,
+}: CreateCustomerFormProps) {
   const router = useRouter();
   const { success, error } = useToast();
   const isEditMode = mode === "edit";
@@ -72,7 +86,11 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                   <FormItem>
                     <FormLabel>First Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter first name" {...field} disabled={form.formState.isSubmitting} />
+                      <Input
+                        placeholder="Enter first name"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -86,7 +104,11 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                   <FormItem>
                     <FormLabel>Last Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter last name" {...field} disabled={form.formState.isSubmitting} />
+                      <Input
+                        placeholder="Enter last name"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -100,7 +122,12 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                   <FormItem>
                     <FormLabel>Phone Number *</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="Enter phone number" {...field} disabled={form.formState.isSubmitting} />
+                      <Input
+                        type="tel"
+                        placeholder="Enter phone number"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -115,7 +142,12 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                 <FormItem>
                   <FormLabel>Address</FormLabel>
                   <FormControl>
-                    <Input placeholder="Street address" {...field} disabled={form.formState.isSubmitting} />
+                    <Input
+                      placeholder="Street address"
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -129,7 +161,12 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                 <FormItem>
                   <FormLabel>City</FormLabel>
                   <FormControl>
-                    <Input placeholder="City" {...field} disabled={form.formState.isSubmitting} />
+                    <Input
+                      placeholder="City"
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,7 +180,14 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Additional notes" rows={3} maxLength={500} {...field} disabled={form.formState.isSubmitting} />
+                    <Textarea
+                      placeholder="Additional notes"
+                      rows={3}
+                      maxLength={500}
+                      {...field}
+                      value={field.value || ""}
+                      disabled={form.formState.isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -151,14 +195,27 @@ export function CreateCustomerForm({ workspaceId, mode = "create", customer }: C
             />
 
             <div className="flex gap-3 justify-end">
-              <Button type="button" variant="secondary" onClick={() => router.back()} disabled={form.formState.isSubmitting}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.back()}
+                disabled={form.formState.isSubmitting}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
                 {isEditMode ? (
-                  <><Save className="h-4 w-4 mr-2" />{form.formState.isSubmitting ? "Saving..." : "Save changes"}</>
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {form.formState.isSubmitting ? "Saving..." : "Save changes"}
+                  </>
                 ) : (
-                  <><Plus className="h-4 w-4 mr-2" />{form.formState.isSubmitting ? "Creating..." : "Add Customer"}</>
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {form.formState.isSubmitting
+                      ? "Creating..."
+                      : "Add Customer"}
+                  </>
                 )}
               </Button>
             </div>
