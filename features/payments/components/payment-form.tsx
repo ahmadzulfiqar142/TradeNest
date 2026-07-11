@@ -3,8 +3,10 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Plus, Save } from "lucide-react";
-import { createPayment, updatePayment } from "@/actions/payment";
+import { useEffect, useState } from "react";
+import { Plus, Save, Wallet } from "lucide-react";
+import { createPayment, updatePayment, getOpenSalesForCustomer } from "@/actions/payment";
+import { getCustomerAdvanceBalance } from "@/actions/sale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { PAYMENT_METHODS, createPaymentSchema, type CreatePaymentFormValues } from "@/schemas/payment";
 import { useToast } from "@/hooks/use-toast";
 
-type OpenSale = { id: string; invoice_number: string; total: number; status: string };
+type OpenSale = { id: string; invoice_number: string; total: number; status: string; remaining_amount?: number };
 
 type PaymentFormProps = {
   workspaceId: string;
@@ -36,9 +38,15 @@ type PaymentFormProps = {
 
 const selectClass = "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted";
 
-export function PaymentForm({ workspaceId, mode = "create", payment, customers, openSales = [], preselectedSaleId, onSuccess }: PaymentFormProps) {
+// Payment methods excluding "advance" — advance is only shown when a sale is selected
+const REGULAR_PAYMENT_METHODS = PAYMENT_METHODS.filter((m) => m.value !== "advance");
+
+export function PaymentForm({ workspaceId, mode = "create", payment, customers, openSales: initialOpenSales = [], preselectedSaleId, onSuccess }: PaymentFormProps) {
   const router = useRouter();
   const { success, error } = useToast();
+  const [openSales, setOpenSales] = useState<OpenSale[]>(initialOpenSales);
+  const [loadingSales, setLoadingSales] = useState(false);
+  const [advanceBalance, setAdvanceBalance] = useState(0);
 
   const form = useForm<CreatePaymentFormValues>({
     resolver: zodResolver(createPaymentSchema),
@@ -52,6 +60,58 @@ export function PaymentForm({ workspaceId, mode = "create", payment, customers, 
       notes: payment?.notes ?? null,
     },
   });
+
+  const customerId = form.watch("customerId");
+  const saleId = form.watch("saleId");
+
+  // Fetch open sales + advance balance when customer changes
+  useEffect(() => {
+    if (!customerId) {
+      setOpenSales([]);
+      setAdvanceBalance(0);
+      form.setValue("saleId", null);
+      form.setValue("paymentMethod", "");
+      return;
+    }
+    setLoadingSales(true);
+    Promise.all([
+      getOpenSalesForCustomer(workspaceId, customerId),
+      getCustomerAdvanceBalance(workspaceId, customerId),
+    ])
+      .then(([salesResult, advResult]) => {
+        setOpenSales(salesResult.sales as OpenSale[]);
+        setAdvanceBalance(advResult.advance);
+      })
+      .catch(() => { setOpenSales([]); setAdvanceBalance(0); })
+      .finally(() => setLoadingSales(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerId, workspaceId]);
+
+  // When sale selection changes: auto-fill amount + method
+  useEffect(() => {
+    if (!saleId) {
+      // Deselected sale — clear advance auto-fill if it was set
+      if (form.getValues("paymentMethod") === "advance") {
+        form.setValue("paymentMethod", "");
+        form.setValue("amount", 0);
+      }
+      return;
+    }
+
+    const sale = openSales.find((s) => s.id === saleId);
+    if (!sale) return;
+
+    const remaining = sale.remaining_amount ?? sale.total;
+
+    if (advanceBalance > 0) {
+      // Auto-select advance and fill with min(advance, remaining)
+      form.setValue("paymentMethod", "advance");
+      form.setValue("amount", Math.min(advanceBalance, remaining));
+    } else {
+      form.setValue("amount", remaining);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saleId, advanceBalance]);
 
   const onSubmit = async (data: CreatePaymentFormValues) => {
     const result =
@@ -68,13 +128,18 @@ export function PaymentForm({ workspaceId, mode = "create", payment, customers, 
     }
   };
 
+  // Show advance option in method dropdown only when a sale is linked and advance exists
+  const availableMethods = saleId && advanceBalance > 0
+    ? PAYMENT_METHODS
+    : REGULAR_PAYMENT_METHODS;
+
   return (
     <Card>
       <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Customer — uses Autocomplete, wired via form.setValue */}
+              {/* Customer */}
               <FormField
                 control={form.control}
                 name="customerId"
@@ -94,27 +159,50 @@ export function PaymentForm({ workspaceId, mode = "create", payment, customers, 
                 )}
               />
 
-              {openSales.length > 0 && (
-                <FormField
-                  control={form.control}
-                  name="saleId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Link to Invoice <span className="text-muted-foreground text-xs">(optional)</span></FormLabel>
-                      <FormControl>
-                        <select {...field} value={field.value ?? ""} className={selectClass}>
-                          <option value="">Advance / Unlinked Payment</option>
-                          {openSales.map((s) => (
-                            <option key={s.id} value={s.id}>
-                              {s.invoice_number} — Rs. {Number(s.total).toLocaleString()} ({s.status})
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              {/* Invoice selector */}
+              <FormField
+                control={form.control}
+                name="saleId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Link to Invoice{" "}
+                      <span className="text-muted-foreground text-xs">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => form.setValue("saleId", e.target.value || null)}
+                        className={selectClass}
+                        disabled={!customerId || loadingSales}
+                      >
+                        <option value="">
+                          {loadingSales ? "Loading invoices..." : "Advance / Unlinked Payment"}
+                        </option>
+                        {openSales.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.invoice_number} — Rs. {Number(s.remaining_amount ?? s.total).toLocaleString()} remaining
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    {customerId && !loadingSales && openSales.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No pending invoices for this customer</p>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Advance balance banner — shown when sale selected and advance exists */}
+              {saleId && advanceBalance > 0 && (
+                <div className="md:col-span-2 flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                  <Wallet className="h-4 w-4 text-green-600 shrink-0" />
+                  <span className="text-sm text-green-800 dark:text-green-300">
+                    Customer has <strong>Rs. {advanceBalance.toLocaleString()}</strong> advance balance — auto-selected as payment method
+                  </span>
+                </div>
               )}
 
               <FormField
@@ -140,7 +228,9 @@ export function PaymentForm({ workspaceId, mode = "create", payment, customers, 
                     <FormControl>
                       <select {...field} className={selectClass} disabled={form.formState.isSubmitting}>
                         <option value="">Select payment method</option>
-                        {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                        {availableMethods.map((m) => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
                       </select>
                     </FormControl>
                     <FormMessage />

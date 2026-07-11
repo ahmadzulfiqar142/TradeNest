@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PaymentReceipt } from "@/components/payments/payment-receipt";
 
 interface PaymentDetailsClientProps {
   payment: {
@@ -21,10 +23,19 @@ interface PaymentDetailsClientProps {
       last_name: string;
       phone: string;
     };
+    sales?: {
+      invoice_number: string;
+      total: number;
+    } | null;
   };
+  workspaceName?: string;
 }
 
-export function PaymentDetailsClient({ payment }: PaymentDetailsClientProps) {
+export function PaymentDetailsClient({
+  payment,
+  workspaceName = "TradeNest",
+}: PaymentDetailsClientProps) {
+  const [showReceipt, setShowReceipt] = useState(false);
   const customerName = `${payment.customers.first_name} ${payment.customers.last_name}`;
 
   return (
@@ -39,33 +50,60 @@ export function PaymentDetailsClient({ payment }: PaymentDetailsClientProps) {
         </Link>
       </div>
 
-      <h1 className="text-3xl font-bold text-foreground">Payment Details</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-foreground">Payment Details</h1>
+        <Button onClick={() => setShowReceipt(!showReceipt)} variant="outline">
+          <Receipt className="w-4 h-4 mr-2" />
+          {showReceipt ? "Hide Receipt" : "View Receipt"}
+        </Button>
+      </div>
+
+      {showReceipt && (
+        <PaymentReceipt
+          payment={{
+            ...payment,
+            customers: payment.customers,
+            sales: payment.sales || null,
+          }}
+          workspaceName={workspaceName}
+        />
+      )}
 
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Customer</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Customer
+              </p>
               <p className="text-foreground font-medium mt-1">{customerName}</p>
-              <p className="text-sm text-muted-foreground">{payment.customers.phone}</p>
+              <p className="text-sm text-muted-foreground">
+                {payment.customers.phone}
+              </p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Amount</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Amount
+              </p>
               <p className="text-foreground font-semibold text-xl mt-1">
                 Rs. {Number(payment.amount).toLocaleString()}
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Payment Method</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Payment Method
+              </p>
               <p className="text-foreground mt-1 capitalize">
                 {payment.payment_method.replace(/_/g, " ")}
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Payment Date</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Payment Date
+              </p>
               <p className="text-foreground mt-1">
                 {new Date(payment.payment_date).toLocaleDateString()}
               </p>
@@ -73,16 +111,22 @@ export function PaymentDetailsClient({ payment }: PaymentDetailsClientProps) {
 
             {payment.reference_number && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Reference Number</p>
-                <p className="text-foreground font-mono text-sm mt-1">{payment.reference_number}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Reference Number
+                </p>
+                <p className="text-foreground font-mono text-sm mt-1">
+                  {payment.reference_number}
+                </p>
               </div>
             )}
 
             {payment.sale_id && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Linked Invoice</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Linked Invoice
+                </p>
                 <p className="text-foreground font-mono text-sm mt-1">
-                  {payment.sale_id.slice(0, 8).toUpperCase()}
+                  {payment.sales?.invoice_number ?? payment.sale_id.slice(0, 8).toUpperCase()}
                 </p>
               </div>
             )}
@@ -93,14 +137,18 @@ export function PaymentDetailsClient({ payment }: PaymentDetailsClientProps) {
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Payment ID</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Payment ID
+              </p>
               <p className="text-foreground font-mono text-sm mt-1">
                 {payment.id.slice(0, 8).toUpperCase()}
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Created At</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Created At
+              </p>
               <p className="text-foreground mt-1">
                 {new Date(payment.created_at).toLocaleString()}
               </p>

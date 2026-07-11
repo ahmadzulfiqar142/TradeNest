@@ -105,6 +105,108 @@ export async function createPayment(
 
   const v = parsed.data;
 
+  // Overpayment guard: if linked to a sale, amount must not exceed remaining balance
+  if (v.saleId) {
+    const { data: sale } = await supabase
+      .from("sales")
+      .select("remaining_amount, status")
+      .eq("id", v.saleId)
+      .eq("workspace_id", workspaceId)
+      .single();
+
+    if (!sale) return { message: "Sale not found.", success: false };
+    if (sale.status === "cancelled") return { message: "Cannot add payment to a cancelled sale.", success: false };
+
+    const remaining = Number(sale.remaining_amount);
+    if (v.amount > remaining + 0.001) {
+      return {
+        message: `Payment amount (${v.amount}) exceeds the remaining balance (${remaining.toFixed(2)}) on this invoice.`,
+        success: false,
+      };
+    }
+  }
+
+  // When paying via advance, consume existing unlinked advance payments oldest-first
+  // instead of inserting a new record (which would leave the original advance untouched)
+  if (v.paymentMethod === "advance" && v.saleId) {
+    const { data: advancePayments } = await supabase
+      .from("payments")
+      .select("id, amount")
+      .eq("workspace_id", workspaceId)
+      .eq("customer_id", v.customerId)
+      .is("sale_id", null)
+      .is("deleted_at", null)
+      .order("payment_date", { ascending: true });
+
+    if (!advancePayments || advancePayments.length === 0) {
+      return { message: "No advance balance available for this customer.", success: false };
+    }
+
+    const totalAdvailable = advancePayments.reduce((s, p) => s + Number(p.amount), 0);
+    if (v.amount > totalAdvailable + 0.001) {
+      return { message: `Advance balance (Rs. ${totalAdvailable.toFixed(2)}) is less than payment amount.`, success: false };
+    }
+
+    let remaining = v.amount;
+    for (const adv of advancePayments) {
+      if (remaining <= 0) break;
+      const consume = Math.min(Number(adv.amount), remaining);
+
+      if (consume >= Number(adv.amount)) {
+        // Fully consumed — link to this sale
+        await supabase
+          .from("payments")
+          .update({
+            sale_id: v.saleId,
+            notes: v.notes ?? `Advance applied to invoice`,
+          })
+          .eq("id", adv.id);
+      } else {
+        // Partially consumed — shrink original, create linked record for used portion
+        await supabase
+          .from("payments")
+          .update({ amount: Number(adv.amount) - consume })
+          .eq("id", adv.id);
+
+        const { data: newAdv } = await supabase
+          .from("payments")
+          .insert({
+            workspace_id: workspaceId,
+            customer_id: v.customerId,
+            sale_id: v.saleId,
+            amount: consume,
+            payment_method: "advance",
+            payment_date: v.paymentDate,
+            notes: v.notes ?? `Advance applied to invoice`,
+            created_by: user.id,
+          })
+          .select("id")
+          .single();
+
+        if (newAdv) {
+          await supabase.rpc("update_customer_ledger", {
+            p_customer_id: v.customerId,
+            p_workspace_id: workspaceId,
+            p_transaction_type: "payment",
+            p_reference_type: "payment",
+            p_reference_id: newAdv.id,
+            p_debit: 0,
+            p_credit: consume,
+            p_description: "Advance applied to invoice",
+          });
+        }
+      }
+
+      remaining -= consume;
+    }
+
+    await updateSaleStatus(supabase, v.saleId, workspaceId);
+    revalidatePath("/payments");
+    revalidatePath(`/customers/${v.customerId}`);
+    revalidatePath("/");
+    return { message: "Advance payment applied successfully", success: true };
+  }
+
   const { data: newPayment, error: paymentError } = await supabase
     .from("payments")
     .insert({
@@ -125,19 +227,17 @@ export async function createPayment(
     return { message: paymentError?.message || "Failed to create payment", success: false };
   }
 
-  // Ledger: debit = money received from customer
   await supabase.rpc("update_customer_ledger", {
     p_customer_id: v.customerId,
     p_workspace_id: workspaceId,
     p_transaction_type: "payment",
     p_reference_type: "payment",
     p_reference_id: newPayment.id,
-    p_debit: v.amount,
-    p_credit: 0,
+    p_debit: 0,
+    p_credit: v.amount,
     p_description: v.saleId ? "Payment received for invoice" : "Advance payment received",
   });
 
-  // Update sale status if linked to a sale
   if (v.saleId) {
     await updateSaleStatus(supabase, v.saleId, workspaceId);
   }
@@ -178,6 +278,37 @@ export async function updatePayment(
 
   if (!existing) return { message: "Payment not found", success: false };
 
+  // Overpayment guard on update: check remaining balance minus this payment's current amount
+  const targetSaleId = v.saleId ?? existing.sale_id;
+  if (targetSaleId) {
+    const { data: sale } = await supabase
+      .from("sales")
+      .select("remaining_amount, status")
+      .eq("id", targetSaleId)
+      .eq("workspace_id", workspaceId)
+      .single();
+
+    if (!sale) return { message: "Sale not found.", success: false };
+    if (sale.status === "cancelled") return { message: "Cannot update payment on a cancelled sale.", success: false };
+
+    // Get the current amount of this payment to compute available headroom
+    const { data: currentPayment } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("id", paymentId)
+      .single();
+
+    const currentAmount = Number(currentPayment?.amount ?? 0);
+    const availableBalance = Number(sale.remaining_amount) + currentAmount;
+
+    if (v.amount > availableBalance + 0.001) {
+      return {
+        message: `Payment amount (${v.amount}) exceeds the available balance (${availableBalance.toFixed(2)}) on this invoice.`,
+        success: false,
+      };
+    }
+  }
+
   const { error: updateError } = await supabase
     .from("payments")
     .update({
@@ -198,8 +329,8 @@ export async function updatePayment(
   await supabase
     .from("customer_ledger")
     .update({
-      debit: v.amount,
-      credit: 0,
+      debit: 0,
+      credit: v.amount,
       description: v.saleId ? "Payment received for invoice" : "Advance payment received",
     })
     .eq("reference_type", "payment")
@@ -316,7 +447,7 @@ export async function getOpenSalesForCustomer(
 
   const { data: sales, error } = await supabase
     .from("sales")
-    .select("id, invoice_number, total, status")
+    .select("id, invoice_number, total, remaining_amount, status")
     .eq("workspace_id", workspaceId)
     .eq("customer_id", customerId)
     .in("status", ["pending", "partially_paid"])

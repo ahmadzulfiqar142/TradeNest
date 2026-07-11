@@ -17,6 +17,7 @@ import {
   Bell,
   MessageSquare,
   Building2,
+  AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const menuItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
   { name: "Inventory", href: "/inventory", icon: Warehouse },
+  { name: "Inventory Alerts", href: "/inventory/alerts", icon: AlertTriangle },
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Payments", href: "/payments", icon: CreditCard },
   { name: "Suppliers", href: "/suppliers", icon: UserCircle },

@@ -612,6 +612,25 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
+      create_sale_transaction: {
+        Args: {
+          p_workspace_id: string;
+          p_user_id: string;
+          p_invoice_number: string;
+          p_customer_id: string | null;
+          p_subtotal: number;
+          p_discount: number;
+          p_total: number;
+          p_paid_amount: number;
+          p_remaining: number;
+          p_status: string;
+          p_notes: string | null;
+          p_sale_date: string;
+          p_payment_method: string | null;
+          p_items: Json;
+        };
+        Returns: string;
+      };
       get_dashboard_stats: {
         Args: { p_workspace_id: string };
         Returns: {
@@ -639,6 +658,33 @@ export interface Database {
           p_description?: string;
         };
         Returns: undefined;
+      };
+      get_expiry_alerts: {
+        Args: {
+          p_workspace_id: string;
+          p_days_threshold: number;
+        };
+        Returns: {
+          product_id: string;
+          product_name: string;
+          expiry_date: string;
+          days_until_expiry: number;
+          stock_quantity: number;
+          category_name: string | null;
+        }[];
+      };
+      get_low_stock_products: {
+        Args: {
+          p_workspace_id: string;
+        };
+        Returns: {
+          product_id: string;
+          product_name: string;
+          stock_quantity: number;
+          min_stock_quantity: number;
+          selling_price: number;
+          category_name: string | null;
+        }[];
       };
     };
     Enums: {

@@ -75,6 +75,29 @@ export async function createProduct(
   }
 
   const values = parsed.data;
+
+  // Duplicate SKU check
+  if (values.sku) {
+    const { data: skuConflict } = await supabase
+      .from("products")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("sku", values.sku)
+      .maybeSingle();
+    if (skuConflict) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
+  }
+
+  // Duplicate barcode check
+  if (values.barcode) {
+    const { data: barcodeConflict } = await supabase
+      .from("products")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("barcode", values.barcode)
+      .maybeSingle();
+    if (barcodeConflict) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
+  }
+
   let categoryId = values.categoryId;
 
   if (values.newCategoryName) {
@@ -194,6 +217,13 @@ export async function updateProduct(
     return { message: "Product not found.", success: false };
   }
 
+  const values = parsed.data;
+
+  // Stock validation — prevent negative stock
+  if (values.stockQuantity < 0) {
+    return { message: "Stock quantity cannot be negative.", success: false };
+  }
+
   // === IMAGE CLEANUP LOGIC ===
   if (oldImageUrl && oldImageUrl !== newImageUrl) {
     try {
@@ -213,7 +243,30 @@ export async function updateProduct(
     }
   }
 
-  const values = parsed.data;
+  // Duplicate SKU check (exclude self)
+  if (values.sku) {
+    const { data: skuConflict } = await supabase
+      .from("products")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("sku", values.sku)
+      .neq("id", productId)
+      .maybeSingle();
+    if (skuConflict) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
+  }
+
+  // Duplicate barcode check (exclude self)
+  if (values.barcode) {
+    const { data: barcodeConflict } = await supabase
+      .from("products")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("barcode", values.barcode)
+      .neq("id", productId)
+      .maybeSingle();
+    if (barcodeConflict) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
+  }
+
   let categoryId = values.categoryId;
 
   if (values.newCategoryName) {
