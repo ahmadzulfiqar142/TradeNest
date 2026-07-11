@@ -413,7 +413,6 @@ export async function updateSale(
       status: status,
       notes: v.notes ?? null,
       sale_date: v.saleDate,
-      payment_method: paidAmount > 0 ? (v.paymentMethod ?? null) : null,
       updated_by: user.id,
     })
     .eq("id", saleId)
