@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
+import { createClient } from "@/supabase/server";
 import { getPaymentDetails } from "@/actions/payment";
 import { PaymentDetailsClient } from "./payment-details-client";
 
@@ -28,5 +29,23 @@ export default async function PaymentDetailsPage({
     notFound();
   }
 
-  return <PaymentDetailsClient payment={result.payment} />;
+  // Fetch sale data if payment is linked to a sale
+  let saleData = null;
+  if (result.payment.sale_id) {
+    const supabase = await createClient();
+    const { data: sale } = await supabase
+      .from("sales")
+      .select("invoice_number, total")
+      .eq("id", result.payment.sale_id)
+      .single();
+
+    saleData = sale;
+  }
+
+  return (
+    <PaymentDetailsClient
+      payment={{ ...result.payment, sales: saleData }}
+      workspaceName="TradeNest"
+    />
+  );
 }

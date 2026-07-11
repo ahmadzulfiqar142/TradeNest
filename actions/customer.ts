@@ -301,11 +301,26 @@ export async function getCustomerDetails(
   // Calculate financial summary (sales-first architecture)
   const totalSales =
     sales?.reduce((sum, sale) => sum + Number(sale.total), 0) ?? 0;
+
+  // Only count unlinked payments (sale_id IS NULL) as advance payments
+  // Payments linked to sales are already accounted for in totalSales
+  const advancePayments =
+    payments
+      ?.filter((p) => p.sale_id === null)
+      .reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+
+  // Total of all payments linked to sales (excludes unlinked advance payments
+  // to avoid double-counting — advance balance is shown separately)
   const totalPayments =
-    payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+    payments
+      ?.filter((p) => p.sale_id !== null)
+      .reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+
+  // Outstanding = sales - all payments (when sales > payments)
+  // Advance = remaining credit after using advance for sales
   const diff = totalPayments - totalSales;
   const outstandingBalance = diff < 0 ? Math.abs(diff) : 0;
-  const advanceBalance = diff > 0 ? diff : 0;
+  const advanceBalance = advancePayments;
 
   // Shape invoices
   const invoices = (sales ?? []).map((sale) => ({
@@ -339,7 +354,9 @@ export async function getCustomerDetails(
   // Shape ledger entries
   const ledgerEntries = (ledger ?? []).map((entry) => {
     const rawType = entry.transaction_type?.toUpperCase() ?? "";
-    const type = (["SALE", "PAYMENT", "ADVANCE", "REFUND", "ADJUSTMENT"] as const).includes(
+    const type = (
+      ["SALE", "PAYMENT", "ADVANCE", "REFUND", "ADJUSTMENT"] as const
+    ).includes(
       rawType as "SALE" | "PAYMENT" | "ADVANCE" | "REFUND" | "ADJUSTMENT",
     )
       ? (rawType as "SALE" | "PAYMENT" | "ADVANCE" | "REFUND" | "ADJUSTMENT")

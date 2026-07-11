@@ -1,13 +1,18 @@
 import { notFound, redirect } from "next/navigation";
 import { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, XCircle } from "lucide-react";
+import { ArrowLeft, XCircle, Pencil } from "lucide-react";
 import { getActiveWorkspaceId } from "@/lib/workspace-cookie";
 import { getSaleDetails, cancelSale } from "@/actions/sale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { SALE_STATUS_LABELS, SALE_STATUS_COLORS } from "@/schemas/sale";
 
@@ -22,7 +27,10 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
   if (!workspaceId) redirect("/create-workspace");
 
   const { saleId } = await params;
-  const { sale, items, payments, error } = await getSaleDetails(workspaceId, saleId);
+  const { sale, items, payments, error } = await getSaleDetails(
+    workspaceId,
+    saleId,
+  );
 
   if (error || !sale) notFound();
 
@@ -41,19 +49,29 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
           <span className="text-sm font-medium">Back to Sales</span>
         </Link>
 
-        {sale.status !== "cancelled" && sale.status !== "paid" && (
-          <form
-            action={async () => {
-              "use server";
-              await cancelSale(workspaceId, saleId);
-            }}
-          >
-            <Button type="submit" variant="destructive" size="sm">
-              <XCircle className="h-4 w-4 mr-2" />
-              Cancel Sale
+        <div className="flex gap-2">
+          {sale.status === "pending" && (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/sales/${saleId}/edit`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Sale
+              </Link>
             </Button>
-          </form>
-        )}
+          )}
+          {sale.status !== "cancelled" && sale.status !== "paid" && (
+            <form
+              action={async () => {
+                "use server";
+                await cancelSale(workspaceId, saleId);
+              }}
+            >
+              <Button type="submit" variant="destructive" size="sm">
+                <XCircle className="h-4 w-4 mr-2" />
+                Cancel Sale
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
 
       {/* Invoice Header */}
@@ -66,13 +84,16 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
               </h1>
               <p className="text-muted-foreground text-sm mt-1">
                 {new Date(sale.sale_date).toLocaleDateString("en-PK", {
-                  year: "numeric", month: "long", day: "numeric",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
                 })}
               </p>
             </div>
             <span
               className={`self-start inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                SALE_STATUS_COLORS[sale.status] ?? "bg-muted text-muted-foreground"
+                SALE_STATUS_COLORS[sale.status] ??
+                "bg-muted text-muted-foreground"
               }`}
             >
               {SALE_STATUS_LABELS[sale.status] ?? sale.status}
@@ -81,23 +102,31 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
 
           {sale.customers && (
             <div className="mt-4 pt-4 border-t">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Customer</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                Customer
+              </p>
               <Link
                 href={`/customers/${sale.customers.id}`}
                 className="font-medium text-foreground hover:text-primary transition-colors"
               >
                 {sale.customers.first_name} {sale.customers.last_name}
               </Link>
-              <p className="text-sm text-muted-foreground">{sale.customers.phone}</p>
+              <p className="text-sm text-muted-foreground">
+                {sale.customers.phone}
+              </p>
               {sale.customers.address && (
-                <p className="text-sm text-muted-foreground">{sale.customers.address}</p>
+                <p className="text-sm text-muted-foreground">
+                  {sale.customers.address}
+                </p>
               )}
             </div>
           )}
 
           {sale.notes && (
             <div className="mt-4 pt-4 border-t">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Notes</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                Notes
+              </p>
               <p className="text-sm text-foreground">{sale.notes}</p>
             </div>
           )}
@@ -107,7 +136,9 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
       {/* Line Items */}
       <Card>
         <CardContent className="pt-6">
-          <h2 className="text-base font-semibold text-foreground mb-4">Items</h2>
+          <h2 className="text-base font-semibold text-foreground mb-4">
+            Items
+          </h2>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -122,8 +153,12 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
               <TableBody>
                 {items.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell className="font-medium">{item.product_name}</TableCell>
-                    <TableCell className="text-center">{item.quantity}</TableCell>
+                    <TableCell className="font-medium">
+                      {item.product_name}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.quantity}
+                    </TableCell>
                     <TableCell className="text-right">
                       Rs. {Number(item.unit_price).toLocaleString()}
                     </TableCell>
@@ -169,20 +204,26 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-foreground">Payments</h2>
-            {outstanding > 0 && sale.status !== "cancelled" && sale.customers && (
-              <Button asChild size="sm">
-                <Link
-                  href={`/payments?customerId=${sale.customers.id}&saleId=${saleId}`}
-                >
-                  Record Payment
-                </Link>
-              </Button>
-            )}
+            <h2 className="text-base font-semibold text-foreground">
+              Payments
+            </h2>
+            {outstanding > 0 &&
+              sale.status !== "cancelled" &&
+              sale.customers && (
+                <Button asChild size="sm">
+                  <Link
+                    href={`/payments?customerId=${sale.customers.id}&saleId=${saleId}`}
+                  >
+                    Record Payment
+                  </Link>
+                </Button>
+              )}
           </div>
 
           {payments.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4 text-center">No payments recorded yet</p>
+            <p className="text-muted-foreground text-sm py-4 text-center">
+              No payments recorded yet
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -197,7 +238,9 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
                 <TableBody>
                   {payments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell>{new Date(p.payment_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {new Date(p.payment_date).toLocaleDateString()}
+                      </TableCell>
                       <TableCell className="capitalize">
                         {p.payment_method.replace(/_/g, " ")}
                       </TableCell>
@@ -224,8 +267,12 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
             </div>
             <div className="flex gap-12 font-bold">
               <span>Outstanding</span>
-              <span className={`w-32 text-right ${outstanding > 0 ? "text-red-500" : "text-green-600"}`}>
-                {outstanding > 0 ? `Rs. ${outstanding.toLocaleString()}` : "Settled ✓"}
+              <span
+                className={`w-32 text-right ${outstanding > 0 ? "text-red-500" : "text-green-600"}`}
+              >
+                {outstanding > 0
+                  ? `Rs. ${outstanding.toLocaleString()}`
+                  : "Settled ✓"}
               </span>
             </div>
           </div>

@@ -16,7 +16,7 @@ export interface CustomerFinancialSummary {
   totalSales: number;
   totalPayments: number;
   outstandingBalance: number; // max(0, totalSales - totalPayments)
-  advanceBalance: number;     // max(0, totalPayments - totalSales)
+  advanceBalance: number; // sum of unlinked payments (sale_id IS NULL)
   totalInvoices: number;
   totalPaymentsReceived: number;
   lastSaleDate: string | null;

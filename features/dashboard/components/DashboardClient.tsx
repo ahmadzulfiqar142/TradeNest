@@ -27,6 +27,7 @@ import {
   Package,
   Activity,
   Clock,
+  Banknote,
 } from "lucide-react";
 
 // Sample data
@@ -106,6 +107,9 @@ interface DashboardClientProps {
     profitMargin: string;
     totalCustomers: number;
     productsInStock: number;
+    pendingAmount: string;
+    advanceBalance: string;
+    lowStockCount: number;
     activeOrders: number;
     avgResponseTime: string;
   };
@@ -120,6 +124,9 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     profitMargin: "73.5%",
     totalCustomers: 892,
     productsInStock: 2543,
+    pendingAmount: "$5,230.00",
+    advanceBalance: "$2,100.00",
+    lowStockCount: 12,
     activeOrders: 156,
     avgResponseTime: "2.4h",
   };
@@ -138,7 +145,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Revenue"
-          value={metrics.totalRevenue}
+          value={`$${metrics.totalRevenue}`}
           icon={DollarSign}
           trend={{ value: 20.1, isPositive: true }}
         />
@@ -150,7 +157,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         />
         <MetricCard
           title="Total Expenses"
-          value={metrics.totalExpenses}
+          value={`$${metrics.totalExpenses}`}
           icon={TrendingUp}
           trend={{ value: 5, isPositive: false }}
         />
@@ -171,6 +178,24 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
           value={metrics.productsInStock}
           icon={Package}
           trend={{ value: 8, isPositive: true }}
+        />
+        <MetricCard
+          title="Pending Amount"
+          value={`$${metrics.pendingAmount}`}
+          icon={Clock}
+          trend={{ value: 5.2, isPositive: false }}
+        />
+        <MetricCard
+          title="Advance Balance"
+          value={`$${metrics.advanceBalance}`}
+          icon={Banknote}
+          trend={{ value: 3.1, isPositive: true }}
+        />
+        <MetricCard
+          title="Low Stock Alerts"
+          value={metrics.lowStockCount}
+          icon={Package}
+          trend={{ value: 2, isPositive: false }}
         />
         <MetricCard
           title="Active Orders"

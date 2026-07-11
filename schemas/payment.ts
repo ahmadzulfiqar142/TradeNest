@@ -19,6 +19,7 @@ export type CreatePaymentFormValues = z.infer<typeof createPaymentSchema>;
 export type UpdatePaymentFormValues = z.infer<typeof updatePaymentSchema>;
 
 export const PAYMENT_METHODS = [
+  { value: "advance", label: "Advance Balance" },
   { value: "cash", label: "Cash" },
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "jazzcash", label: "JazzCash" },
