@@ -125,6 +125,7 @@ export interface Database {
           workspace_id: string;
           name: string;
           description: string | null;
+          is_active: boolean;
           created_at: string;
           updated_at: string;
           created_by: string | null;
@@ -135,6 +136,7 @@ export interface Database {
           workspace_id: string;
           name: string;
           description?: string | null;
+          is_active?: boolean;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
@@ -144,6 +146,7 @@ export interface Database {
           workspace_id?: string;
           name?: string;
           description?: string | null;
+          is_active?: boolean;
           updated_at?: string;
           updated_by?: string | null;
         };
@@ -156,6 +159,115 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+      units: {
+        Row: {
+          id: string;
+          name: string;
+          abbreviation: string;
+          symbol: string;
+          type: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          abbreviation: string;
+          symbol: string;
+          type: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          abbreviation?: string;
+          symbol?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      product_units: {
+        Row: {
+          id: string;
+          product_id: string;
+          unit_id: string;
+          conversion_factor: number;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          unit_id: string;
+          conversion_factor: number;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          unit_id?: string;
+          conversion_factor?: number;
+          is_default?: boolean;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      product_prices: {
+        Row: {
+          id: string;
+          product_unit_id: string;
+          selling_price: number;
+          purchase_price: number;
+          effective_from: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_unit_id: string;
+          selling_price?: number;
+          purchase_price?: number;
+          effective_from?: string;
+          created_at?: string;
+        };
+        Update: {
+          selling_price?: number;
+          purchase_price?: number;
+          effective_from?: string;
+        };
+        Relationships: [];
+      };
+      inventory: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          product_id: string;
+          base_unit_id: string;
+          current_stock: number;
+          minimum_stock: number;
+          maximum_stock: number | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          product_id: string;
+          base_unit_id: string;
+          current_stock?: number;
+          minimum_stock?: number;
+          maximum_stock?: number | null;
+          updated_at?: string;
+        };
+        Update: {
+          base_unit_id?: string;
+          current_stock?: number;
+          minimum_stock?: number;
+          maximum_stock?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       products: {
         Row: {
@@ -246,9 +358,10 @@ export interface Database {
       inventory_transactions: {
         Row: {
           id: string;
+          inventory_id: string | null;
           workspace_id: string;
           product_id: string;
-          transaction_type: "in" | "out" | "adjustment";
+          transaction_type: "in" | "out" | "adjustment" | "return";
           quantity: number;
           previous_stock: number;
           new_stock: number;
@@ -260,9 +373,10 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          inventory_id?: string | null;
           workspace_id: string;
           product_id: string;
-          transaction_type: "in" | "out" | "adjustment";
+          transaction_type: "in" | "out" | "adjustment" | "return";
           quantity: number;
           previous_stock: number;
           new_stock: number;
@@ -273,7 +387,8 @@ export interface Database {
           created_by?: string | null;
         };
         Update: {
-          transaction_type?: "in" | "out" | "adjustment";
+          inventory_id?: string | null;
+          transaction_type?: "in" | "out" | "adjustment" | "return";
           quantity?: number;
           previous_stock?: number;
           new_stock?: number;
@@ -438,6 +553,8 @@ export interface Database {
           discount: number;
           tax: number;
           total: number;
+          product_unit_id: string | null;
+          unit_name: string;
           created_at: string;
         };
         Insert: {
@@ -452,6 +569,8 @@ export interface Database {
           discount?: number;
           tax?: number;
           total: number;
+          product_unit_id?: string | null;
+          unit_name?: string;
           created_at?: string;
         };
         Update: {
@@ -462,6 +581,8 @@ export interface Database {
           discount?: number;
           tax?: number;
           total?: number;
+          product_unit_id?: string | null;
+          unit_name?: string;
         };
         Relationships: [
           {
@@ -631,6 +752,17 @@ export interface Database {
           p_sale_date: string;
           p_payment_method: string | null;
           p_items: Json;
+        };
+        Returns: string;
+      };
+      adjust_inventory: {
+        Args: {
+          p_workspace_id: string;
+          p_product_id: string;
+          p_direction: string;
+          p_quantity: number;
+          p_reason: string;
+          p_user_id: string;
         };
         Returns: string;
       };

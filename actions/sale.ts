@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 import { createClient, createAdminClient } from "@/supabase/server";
 import { createSaleSchema } from "@/schemas/sale";
 
+type ProductUnit = {
+  unitId: string;
+  unitName: string;
+  conversionFactor: number;
+  isDefault: boolean;
+  sellingPrice: number;
+};
+
 export type SaleActionState = {
   message: string;
   success: boolean;
@@ -110,6 +118,23 @@ export async function createSale(
   // would make p_remaining=0, causing the RPC to skip advance deduction entirely.
   const cashPaid = isAdvancePayment ? 0 : Math.min(v.paidAmount, total);
 
+  // Fetch product units to get unit names for product items
+  const productUnitIds = v.items
+    .filter((item) => item.type === "product" && item.productUnitId)
+    .map((item) => item.productUnitId as string);
+
+  let productUnitMap = new Map<string, string>();
+  if (productUnitIds.length > 0) {
+    const { data: units } = await supabase
+      .from("units")
+      .select("id, name")
+      .in("id", productUnitIds);
+
+    (units ?? []).forEach((u) => {
+      productUnitMap.set(u.id, u.name);
+    });
+  }
+
   const { data: saleId, error: rpcError } = await supabase.rpc(
     "create_sale_transaction",
     {
@@ -134,6 +159,14 @@ export async function createSale(
         unitPrice: item.unitPrice,
         discount: item.discount,
         total: item.total,
+        productUnitId:
+          item.type === "product" ? (item.productUnitId ?? null) : null,
+        unitName:
+          item.type === "product"
+            ? item.unitName ||
+              productUnitMap.get(item.productUnitId as string) ||
+              "pc"
+            : item.unitName || undefined,
       })),
     },
   );
@@ -303,15 +336,95 @@ export async function getSaleDetails(workspaceId: string, saleId: string) {
 export async function getProductsForSale(workspaceId: string) {
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("products")
-    .select("id, name, selling_price, stock_quantity, sku")
-    .eq("workspace_id", workspaceId)
-    .eq("is_active", true)
-    .order("name", { ascending: true });
+  const [{ data: products, error }, { data: inventory }] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, selling_price, sku")
+      .eq("workspace_id", workspaceId)
+      .eq("is_active", true)
+      .order("name", { ascending: true }),
+    supabase
+      .from("inventory")
+      .select("product_id, current_stock")
+      .eq("workspace_id", workspaceId),
+  ]);
 
   if (error) return { products: [], error: error.message };
-  return { products: data ?? [], error: null };
+
+  // Fetch product units and prices for all products
+  const productIds = (products ?? []).map((p) => p.id);
+
+  const { data: productUnits } = await supabase
+    .from("product_units")
+    .select("id, product_id, unit_id, conversion_factor, is_default")
+    .in("product_id", productIds);
+
+  const productUnitIds = (productUnits ?? []).map((pu) => pu.id);
+
+  const { data: productPrices } = await supabase
+    .from("product_prices")
+    .select("product_unit_id, selling_price, purchase_price")
+    .in("product_unit_id", productUnitIds);
+
+  // Build a map of product units with their prices
+  const unitsByProduct = new Map<string, ProductUnit[]>();
+  const pricesByUnitId = new Map<
+    string,
+    { selling_price: number; purchase_price: number }
+  >();
+
+  (productPrices ?? []).forEach((price) => {
+    pricesByUnitId.set(price.product_unit_id, {
+      selling_price: price.selling_price,
+      purchase_price: price.purchase_price,
+    });
+  });
+
+  (productUnits ?? []).forEach((pu) => {
+    const prices = pricesByUnitId.get(pu.id) || {
+      selling_price: 0,
+      purchase_price: 0,
+    };
+    const units = unitsByProduct.get(pu.product_id) || [];
+    units.push({
+      unitId: pu.unit_id,
+      unitName: "", // Will be populated from units table
+      conversionFactor: pu.conversion_factor,
+      isDefault: pu.is_default,
+      sellingPrice: prices.selling_price,
+    });
+    unitsByProduct.set(pu.product_id, units);
+  });
+
+  // Fetch unit names
+  const allUnitIds = Array.from(
+    new Set((productUnits ?? []).map((pu) => pu.unit_id)),
+  );
+  const { data: units } = await supabase
+    .from("units")
+    .select("id, name, abbreviation")
+    .in("id", allUnitIds);
+
+  const unitNames = new Map((units ?? []).map((u) => [u.id, u.name]));
+
+  // Attach units to products
+  const stock = new Map(
+    (inventory ?? []).map((item) => [item.product_id, item.current_stock]),
+  );
+  return {
+    products: (products ?? []).map((product) => {
+      const productUnitsList = unitsByProduct.get(product.id) || [];
+      return {
+        ...product,
+        stock_quantity: stock.get(product.id) ?? 0,
+        units: productUnitsList.map((u) => ({
+          ...u,
+          unitName: unitNames.get(u.unitId) || u.unitId,
+        })),
+      };
+    }),
+    error: null,
+  };
 }
 
 export async function getCustomersForSale(workspaceId: string) {
@@ -490,6 +603,23 @@ export async function updateSale(
     return { message: deleteItemsError.message, success: false };
   }
 
+  // Fetch product units to get unit names for product items
+  const productUnitIdsForUpdate = v.items
+    .filter((item) => item.type === "product" && item.productUnitId)
+    .map((item) => item.productUnitId as string);
+
+  let productUnitMapForUpdate = new Map<string, string>();
+  if (productUnitIdsForUpdate.length > 0) {
+    const { data: unitsUpdate } = await supabase
+      .from("units")
+      .select("id, name")
+      .in("id", productUnitIdsForUpdate);
+
+    (unitsUpdate ?? []).forEach((u) => {
+      productUnitMapForUpdate.set(u.id, u.name);
+    });
+  }
+
   // Insert new sale items
   const saleItems = v.items.map((item) => ({
     sale_id: saleId,
@@ -503,6 +633,14 @@ export async function updateSale(
     unit_price: item.unitPrice,
     discount: item.discount,
     total: item.total,
+    product_unit_id:
+      item.type === "product" ? (item.productUnitId ?? null) : null,
+    unit_name:
+      item.type === "product"
+        ? item.unitName ||
+          productUnitMapForUpdate.get(item.productUnitId as string) ||
+          "pc"
+        : item.unitName || undefined,
   }));
 
   const { error: insertItemsError } = await supabase

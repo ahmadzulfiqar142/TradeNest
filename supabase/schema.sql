@@ -1,14 +1,29 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create enum types
-CREATE TYPE user_role AS ENUM ('owner', 'admin', 'manager', 'employee');
-CREATE TYPE transaction_type AS ENUM ('in', 'out', 'adjustment');
-CREATE TYPE payment_status AS ENUM ('pending', 'partial', 'paid', 'overdue');
-CREATE TYPE sale_type AS ENUM ('cash', 'credit', 'partial');
+-- Create enum types (idempotent)
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('owner', 'admin', 'manager', 'employee');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE transaction_type AS ENUM ('in', 'out', 'adjustment', 'return');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE payment_status AS ENUM ('pending', 'partial', 'paid', 'overdue');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE TYPE sale_type AS ENUM ('cash', 'credit', 'partial');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Workspaces table
-CREATE TABLE workspaces (
+CREATE TABLE IF NOT EXISTS workspaces (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
@@ -25,7 +40,7 @@ CREATE TABLE workspaces (
 );
 
 -- Profiles table
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT UNIQUE NOT NULL,
     full_name TEXT,
@@ -35,7 +50,7 @@ CREATE TABLE profiles (
 );
 
 -- Workspace members table
-CREATE TABLE workspace_members (
+CREATE TABLE IF NOT EXISTS workspace_members (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -46,11 +61,12 @@ CREATE TABLE workspace_members (
 );
 
 -- Categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES profiles(id),
@@ -58,7 +74,7 @@ CREATE TABLE categories (
 );
 
 -- Products table
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
@@ -82,8 +98,42 @@ CREATE TABLE products (
     updated_by UUID REFERENCES profiles(id)
 );
 
+-- Product-master units and per-unit pricing (inventory is intentionally separate).
+CREATE TABLE IF NOT EXISTS units (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    abbreviation TEXT NOT NULL UNIQUE,
+    symbol TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS product_units (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    unit_id UUID NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+    conversion_factor DECIMAL(14, 6) NOT NULL CHECK (conversion_factor > 0),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(product_id, unit_id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS product_units_one_default_per_product
+    ON product_units(product_id) WHERE is_default;
+
+CREATE TABLE IF NOT EXISTS product_prices (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    product_unit_id UUID NOT NULL REFERENCES product_units(id) ON DELETE CASCADE,
+    selling_price DECIMAL(12, 2) NOT NULL DEFAULT 0 CHECK (selling_price >= 0),
+    purchase_price DECIMAL(12, 2) NOT NULL DEFAULT 0 CHECK (purchase_price >= 0),
+    effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Inventory transactions table
-CREATE TABLE inventory_transactions (
+CREATE TABLE IF NOT EXISTS inventory_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -98,8 +148,21 @@ CREATE TABLE inventory_transactions (
     created_by UUID REFERENCES profiles(id)
 );
 
+CREATE TABLE IF NOT EXISTS inventory (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    base_unit_id UUID NOT NULL REFERENCES units(id) ON DELETE RESTRICT,
+    current_stock DECIMAL(14, 3) NOT NULL DEFAULT 0 CHECK (current_stock >= 0),
+    minimum_stock DECIMAL(14, 3) NOT NULL DEFAULT 0 CHECK (minimum_stock >= 0),
+    maximum_stock DECIMAL(14, 3),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(workspace_id, product_id),
+    CHECK (maximum_stock IS NULL OR maximum_stock >= minimum_stock)
+);
+
 -- Customers table
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     first_name TEXT NOT NULL,
@@ -116,7 +179,7 @@ CREATE TABLE customers (
 );
 
 -- Suppliers table
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS suppliers (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -138,7 +201,7 @@ CREATE TABLE suppliers (
 );
 
 -- Sales table
-CREATE TABLE sales (
+CREATE TABLE IF NOT EXISTS sales (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     invoice_number TEXT NOT NULL,
@@ -161,7 +224,7 @@ CREATE TABLE sales (
 );
 
 -- Sale items table
-CREATE TABLE sale_items (
+CREATE TABLE IF NOT EXISTS sale_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     sale_id UUID NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
@@ -176,7 +239,7 @@ CREATE TABLE sale_items (
 );
 
 -- Purchases table
-CREATE TABLE purchases (
+CREATE TABLE IF NOT EXISTS purchases (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     invoice_number TEXT NOT NULL,
@@ -198,7 +261,7 @@ CREATE TABLE purchases (
 );
 
 -- Purchase items table
-CREATE TABLE purchase_items (
+CREATE TABLE IF NOT EXISTS purchase_items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     purchase_id UUID NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
@@ -213,7 +276,7 @@ CREATE TABLE purchase_items (
 );
 
 -- Expenses table
-CREATE TABLE expenses (
+CREATE TABLE IF NOT EXISTS expenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     category TEXT NOT NULL,
@@ -227,7 +290,7 @@ CREATE TABLE expenses (
 );
 
 -- Payments table
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -245,7 +308,7 @@ CREATE TABLE payments (
 );
 
 -- Customer ledger table
-CREATE TABLE customer_ledger (
+CREATE TABLE IF NOT EXISTS customer_ledger (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -262,7 +325,7 @@ CREATE TABLE customer_ledger (
 );
 
 -- Supplier ledger table
-CREATE TABLE supplier_ledger (
+CREATE TABLE IF NOT EXISTS supplier_ledger (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     supplier_id UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
@@ -279,7 +342,7 @@ CREATE TABLE supplier_ledger (
 );
 
 -- Notifications table
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -293,7 +356,7 @@ CREATE TABLE notifications (
 );
 
 -- Audit logs table
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -307,35 +370,43 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for performance
-CREATE INDEX idx_workspace_members_workspace ON workspace_members(workspace_id);
-CREATE INDEX idx_workspace_members_user ON workspace_members(user_id);
-CREATE INDEX idx_products_workspace ON products(workspace_id);
-CREATE INDEX idx_products_category ON products(category_id);
-CREATE INDEX idx_products_sku ON products(sku);
-CREATE INDEX idx_inventory_transactions_workspace ON inventory_transactions(workspace_id);
-CREATE INDEX idx_inventory_transactions_product ON inventory_transactions(product_id);
-CREATE INDEX idx_customers_workspace ON customers(workspace_id);
-CREATE INDEX idx_suppliers_workspace ON suppliers(workspace_id);
-CREATE INDEX idx_sales_workspace ON sales(workspace_id);
-CREATE INDEX idx_sales_customer ON sales(customer_id);
-CREATE INDEX idx_sales_date ON sales(sale_date);
-CREATE INDEX idx_sale_items_sale ON sale_items(sale_id);
-CREATE INDEX idx_purchases_workspace ON purchases(workspace_id);
-CREATE INDEX idx_purchases_supplier ON purchases(supplier_id);
-CREATE INDEX idx_purchase_items_purchase ON purchase_items(purchase_id);
-CREATE INDEX idx_expenses_workspace ON expenses(workspace_id);
-CREATE INDEX idx_payments_workspace ON payments(workspace_id);
-CREATE INDEX idx_payments_customer ON payments(customer_id);
-CREATE INDEX idx_payments_invoice ON payments(invoice_id);
-CREATE INDEX idx_payments_date ON payments(payment_date);
-CREATE INDEX idx_customer_ledger_workspace ON customer_ledger(workspace_id);
-CREATE INDEX idx_customer_ledger_customer ON customer_ledger(customer_id);
-CREATE INDEX idx_supplier_ledger_workspace ON supplier_ledger(workspace_id);
-CREATE INDEX idx_supplier_ledger_supplier ON supplier_ledger(supplier_id);
-CREATE INDEX idx_notifications_workspace ON notifications(workspace_id);
-CREATE INDEX idx_notifications_user ON notifications(user_id);
-CREATE INDEX idx_audit_logs_workspace ON audit_logs(workspace_id);
+-- Create indexes for performance (idempotent)
+CREATE INDEX IF NOT EXISTS idx_workspace_members_workspace ON workspace_members(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_workspace_members_user ON workspace_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_products_workspace ON products(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
+CREATE INDEX IF NOT EXISTS idx_products_sku ON products(sku);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_workspace ON inventory_transactions(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_transactions_product ON inventory_transactions(product_id);
+CREATE INDEX IF NOT EXISTS idx_customers_workspace ON customers(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_suppliers_workspace ON suppliers(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sales_workspace ON sales(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date);
+CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_workspace ON purchases(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase ON purchase_items(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_workspace ON expenses(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_payments_workspace ON payments(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_payments_customer ON payments(customer_id);
+-- Create index on invoice_id or sale_id (v2 migration may rename invoice_id to sale_id)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payments' AND column_name = 'invoice_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id);
+    ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payments' AND column_name = 'sale_id') THEN
+        CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(sale_id);
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_payments_date ON payments(payment_date);
+CREATE INDEX IF NOT EXISTS idx_customer_ledger_workspace ON customer_ledger(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_customer_ledger_customer ON customer_ledger(customer_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_ledger_workspace ON supplier_ledger(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_ledger_supplier ON supplier_ledger(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_workspace ON notifications(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_workspace ON audit_logs(workspace_id);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -346,36 +417,47 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply updated_at triggers
+-- Apply updated_at triggers (idempotent)
+DROP TRIGGER IF EXISTS update_workspaces_updated_at ON workspaces;
 CREATE TRIGGER update_workspaces_updated_at BEFORE UPDATE ON workspaces
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_profiles_updated_at ON profiles;
 CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_workspace_members_updated_at ON workspace_members;
 CREATE TRIGGER update_workspace_members_updated_at BEFORE UPDATE ON workspace_members
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
 CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_customers_updated_at ON customers;
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_suppliers_updated_at ON suppliers;
 CREATE TRIGGER update_suppliers_updated_at BEFORE UPDATE ON suppliers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_sales_updated_at ON sales;
 CREATE TRIGGER update_sales_updated_at BEFORE UPDATE ON sales
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_purchases_updated_at ON purchases;
 CREATE TRIGGER update_purchases_updated_at BEFORE UPDATE ON purchases
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_payments_updated_at ON payments;
 CREATE TRIGGER update_payments_updated_at BEFORE UPDATE ON payments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

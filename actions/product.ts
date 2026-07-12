@@ -1,407 +1,108 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, createAdminClient } from "@/supabase/server";
-import { createProductSchema } from "@/schemas/product";
+import { createAdminClient, createClient } from "@/supabase/server";
+import { createProductSchema, type CreateProductFormValues } from "@/schemas/product";
 
-export type ProductActionState = {
-  message: string;
-  success: boolean;
-};
+export type ProductActionState = { message: string; success: boolean };
 
-function getStoragePath(publicUrl: string | null): string | null {
+function getStoragePath(publicUrl: string | null) {
   if (!publicUrl) return null;
-
   try {
-    const url = new URL(publicUrl);
-    // Remove /storage/v1/object/public/product-images/
-    const pathParts = url.pathname.split("/").slice(4);
-    return decodeURIComponent(pathParts.join("/"));
-  } catch {
-    return null;
-  }
+    const parts = new URL(publicUrl).pathname.split("/");
+    const bucketIndex = parts.indexOf("product-images");
+    return bucketIndex === -1 ? null : decodeURIComponent(parts.slice(bucketIndex + 1).join("/"));
+  } catch { return null; }
 }
+
 async function getAuthorizedUser(workspaceId: string) {
   const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { supabase, user: null, error: "Unauthorized" };
-  }
-
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return { supabase, user: null, error: "Unauthorized" };
   const admin = createAdminClient();
-  const { data: member } = await admin
-    .from("workspace_members")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!member) {
-    return {
-      supabase,
-      user: null,
-      error: "You do not have access to this workspace.",
-    };
-  }
-
-  return { supabase, user, error: null };
+  const { data: member } = await admin.from("workspace_members").select("id").eq("workspace_id", workspaceId).eq("user_id", user.id).maybeSingle();
+  return member ? { supabase, user, error: null } : { supabase, user: null, error: "You do not have access to this workspace." };
 }
 
-export async function createProduct(
-  workspaceId: string,
-  workspaceSlug: string,
-  data: import("@/schemas/product").CreateProductFormValues,
-): Promise<ProductActionState> {
-  void workspaceSlug;
+async function resolveCategory(supabase: Awaited<ReturnType<typeof createClient>>, workspaceId: string, userId: string, values: CreateProductFormValues) {
+  if (!values.newCategoryName) return values.categoryId ?? null;
+  const { data, error } = await supabase.from("categories").insert({ workspace_id: workspaceId, name: values.newCategoryName, created_by: userId, updated_by: userId }).select("id").single();
+  if (error) throw new Error(error.message);
+  return data.id;
+}
+
+async function replaceProductUnits(supabase: Awaited<ReturnType<typeof createClient>>, productId: string, values: CreateProductFormValues) {
+  const { data: currentUnits, error: currentError } = await supabase.from("product_units").select("id").eq("product_id", productId);
+  if (currentError) throw new Error(currentError.message);
+  if (currentUnits?.length) {
+    const { error } = await supabase.from("product_units").delete().eq("product_id", productId);
+    if (error) throw new Error(error.message);
+  }
+  const { data: units, error: unitsError } = await supabase.from("product_units").insert(values.units.map((unit) => ({ product_id: productId, unit_id: unit.unitId, conversion_factor: unit.conversionFactor, is_default: unit.isDefault }))).select("id, unit_id");
+  if (unitsError || !units) throw new Error(unitsError?.message ?? "Could not save product units");
+  const prices = values.units.map((unit) => {
+    const productUnit = units.find((saved) => saved.unit_id === unit.unitId);
+    return { product_unit_id: productUnit!.id, selling_price: unit.sellingPrice, purchase_price: unit.purchasePrice };
+  });
+  const { error: pricesError } = await supabase.from("product_prices").insert(prices);
+  if (pricesError) throw new Error(pricesError.message);
+}
+
+function legacyDefaultPrices(values: CreateProductFormValues) {
+  const unit = values.units.find((item) => item.isDefault)!;
+  return { purchase_price: unit.purchasePrice, selling_price: unit.sellingPrice };
+}
+
+export async function createProduct(workspaceId: string, _workspaceSlug: string, data: CreateProductFormValues): Promise<ProductActionState> {
   const parsed = createProductSchema.safeParse(data);
-
-  if (!parsed.success) {
-    return {
-      message:
-        parsed.error.issues[0]?.message ??
-        "Check the product details and try again.",
-      success: false,
-    };
-  }
-
+  if (!parsed.success) return { message: parsed.error.issues[0]?.message ?? "Check the product details and try again.", success: false };
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-
-  if (error || !user) {
-    return { message: error ?? "Unauthorized", success: false };
-  }
-
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
   const values = parsed.data;
-
-  // Duplicate SKU check
-  if (values.sku) {
-    const { data: skuConflict } = await supabase
-      .from("products")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("sku", values.sku)
-      .maybeSingle();
-    if (skuConflict) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
-  }
-
-  // Duplicate barcode check
-  if (values.barcode) {
-    const { data: barcodeConflict } = await supabase
-      .from("products")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("barcode", values.barcode)
-      .maybeSingle();
-    if (barcodeConflict) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
-  }
-
-  let categoryId = values.categoryId;
-
-  if (values.newCategoryName) {
-    const { data: category, error: categoryError } = await supabase
-      .from("categories")
-      .insert({
-        workspace_id: workspaceId,
-        name: values.newCategoryName,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (categoryError) {
-      return { message: categoryError.message, success: false };
-    }
-
-    categoryId = category.id;
-  }
-
-  const { data: product, error: productError } = await supabase
-    .from("products")
-    .insert({
-      workspace_id: workspaceId,
-      category_id: categoryId,
-      name: values.name,
-      sku: values.sku,
-      barcode: values.barcode,
-      description: values.description,
-      image_url: values.imageUrl,
-      purchase_price: values.purchasePrice,
-      selling_price: values.sellingPrice,
-      stock_quantity: values.stockQuantity,
-      expiry_date: values.expiryDate,
-      is_active: values.isActive,
-      created_by: user.id,
-      updated_by: user.id,
-    })
-    .select("id")
-    .single();
-
-  if (productError) {
-    return { message: productError.message, success: false };
-  }
-
-  let inventoryHistoryWarning = "";
-
-  if (values.stockQuantity > 0) {
-    const admin = createAdminClient();
-    const { error: transactionError } = await admin
-      .from("inventory_transactions")
-      .insert({
-        workspace_id: workspaceId,
-        product_id: product.id,
-        transaction_type: "in",
-        quantity: values.stockQuantity,
-        previous_stock: 0,
-        new_stock: values.stockQuantity,
-        reference_type: "product_creation",
-        notes: "Opening stock",
-        created_by: user.id,
-      });
-
-    if (transactionError) {
-      inventoryHistoryWarning =
-        " Opening stock was saved on the product, but inventory history was not recorded.";
-    }
-  }
-
-  revalidatePath("/products");
-  revalidatePath("/");
-
-  return {
-    message: inventoryHistoryWarning
-      ? `Product created.${inventoryHistoryWarning}`
-      : "Product created successfully.",
-    success: true,
-  };
+  try {
+    if (values.sku && (await supabase.from("products").select("id").eq("workspace_id", workspaceId).eq("sku", values.sku).maybeSingle()).data) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
+    if (values.barcode && (await supabase.from("products").select("id").eq("workspace_id", workspaceId).eq("barcode", values.barcode).maybeSingle()).data) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
+    const categoryId = await resolveCategory(supabase, workspaceId, user.id, values);
+    const { data: product, error: productError } = await supabase.from("products").insert({ workspace_id: workspaceId, category_id: categoryId, name: values.name, sku: values.sku ?? null, barcode: values.barcode ?? null, description: values.description ?? null, image_url: values.imageUrl ?? null, is_active: values.isActive, created_by: user.id, updated_by: user.id, ...legacyDefaultPrices(values) }).select("id").single();
+    if (productError) return { message: productError.message, success: false };
+    await replaceProductUnits(supabase, product.id, values);
+  } catch (cause) { return { message: cause instanceof Error ? cause.message : "Could not create product.", success: false }; }
+  revalidatePath("/products"); revalidatePath("/");
+  return { message: "Product created successfully.", success: true };
 }
 
-export async function updateProduct(
-  workspaceId: string,
-  workspaceSlug: string,
-  productId: string,
-  data: import("@/schemas/product").CreateProductFormValues,
-): Promise<ProductActionState> {
+export async function updateProduct(workspaceId: string, _workspaceSlug: string, productId: string, data: CreateProductFormValues): Promise<ProductActionState> {
   const parsed = createProductSchema.safeParse(data);
-
-  if (!parsed.success) {
-    return {
-      message:
-        parsed.error.issues[0]?.message ??
-        "Check the product details and try again.",
-      success: false,
-    };
-  }
-
+  if (!parsed.success) return { message: parsed.error.issues[0]?.message ?? "Check the product details and try again.", success: false };
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-
-  if (error || !user) {
-    return { message: error ?? "Unauthorized", success: false };
-  }
-
-  const newImageUrl = data.imageUrl ?? null;
-  const oldImageUrl = (data as { oldImageUrl?: string }).oldImageUrl ?? null;
-
-  // Fetch existing product (including current image)
-  const { data: existingProduct, error: existingProductError } = await supabase
-    .from("products")
-    .select("stock_quantity, image_url")
-    .eq("id", productId)
-    .eq("workspace_id", workspaceId)
-    .single();
-
-  if (existingProductError || !existingProduct) {
-    return { message: "Product not found.", success: false };
-  }
-
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
   const values = parsed.data;
-
-  // Stock validation — prevent negative stock
-  if (values.stockQuantity < 0) {
-    return { message: "Stock quantity cannot be negative.", success: false };
+  const { data: existing } = await supabase.from("products").select("image_url").eq("id", productId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!existing) return { message: "Product not found.", success: false };
+  try {
+    if (values.sku && (await supabase.from("products").select("id").eq("workspace_id", workspaceId).eq("sku", values.sku).neq("id", productId).maybeSingle()).data) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
+    if (values.barcode && (await supabase.from("products").select("id").eq("workspace_id", workspaceId).eq("barcode", values.barcode).neq("id", productId).maybeSingle()).data) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
+    const categoryId = await resolveCategory(supabase, workspaceId, user.id, values);
+    const { error: updateError } = await supabase.from("products").update({ category_id: categoryId, name: values.name, sku: values.sku ?? null, barcode: values.barcode ?? null, description: values.description ?? null, image_url: values.imageUrl ?? null, is_active: values.isActive, updated_by: user.id, ...legacyDefaultPrices(values) }).eq("id", productId).eq("workspace_id", workspaceId);
+    if (updateError) return { message: updateError.message, success: false };
+    await replaceProductUnits(supabase, productId, values);
+  } catch (cause) { return { message: cause instanceof Error ? cause.message : "Could not update product.", success: false }; }
+  if (existing.image_url && existing.image_url !== values.imageUrl) {
+    const path = getStoragePath(existing.image_url); if (path) await supabase.storage.from("product-images").remove([path]);
   }
-
-  // === IMAGE CLEANUP LOGIC ===
-  if (oldImageUrl && oldImageUrl !== newImageUrl) {
-    try {
-      const oldPath = getStoragePath(oldImageUrl);
-      if (oldPath) {
-        const { error: deleteError } = await supabase.storage
-          .from("product-images")
-          .remove([oldPath]);
-
-        if (deleteError) {
-          console.error("Failed to delete old product image:", deleteError);
-          // Non-blocking: we still proceed with the update
-        }
-      }
-    } catch (err) {
-      console.error("Error processing old image deletion:", err);
-    }
-  }
-
-  // Duplicate SKU check (exclude self)
-  if (values.sku) {
-    const { data: skuConflict } = await supabase
-      .from("products")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("sku", values.sku)
-      .neq("id", productId)
-      .maybeSingle();
-    if (skuConflict) return { message: `SKU "${values.sku}" is already used by another product.`, success: false };
-  }
-
-  // Duplicate barcode check (exclude self)
-  if (values.barcode) {
-    const { data: barcodeConflict } = await supabase
-      .from("products")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("barcode", values.barcode)
-      .neq("id", productId)
-      .maybeSingle();
-    if (barcodeConflict) return { message: `Barcode "${values.barcode}" is already used by another product.`, success: false };
-  }
-
-  let categoryId = values.categoryId;
-
-  if (values.newCategoryName) {
-    const { data: category, error: categoryError } = await supabase
-      .from("categories")
-      .insert({
-        workspace_id: workspaceId,
-        name: values.newCategoryName,
-        created_by: user.id,
-        updated_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (categoryError) {
-      return { message: categoryError.message, success: false };
-    }
-
-    categoryId = category.id;
-  }
-
-  const { error: productError } = await supabase
-    .from("products")
-    .update({
-      category_id: categoryId ?? null,
-      name: values.name,
-      sku: values.sku,
-      barcode: values.barcode ?? null,
-      description: values.description,
-      image_url: values.imageUrl || null,
-      purchase_price: values.purchasePrice,
-      selling_price: values.sellingPrice,
-      stock_quantity: values.stockQuantity,
-      expiry_date: values.expiryDate,
-      is_active: values.isActive,
-      updated_by: user.id,
-    })
-    .eq("id", productId)
-    .eq("workspace_id", workspaceId);
-
-  if (productError) {
-    return { message: productError.message, success: false };
-  }
-
-  // ... rest of your inventory logic (unchanged)
-  let inventoryHistoryWarning = "";
-
-  if (existingProduct.stock_quantity !== values.stockQuantity) {
-    const quantityDelta = values.stockQuantity - existingProduct.stock_quantity;
-    const admin = createAdminClient();
-    const { error: transactionError } = await admin
-      .from("inventory_transactions")
-      .insert({
-        workspace_id: workspaceId,
-        product_id: productId,
-        transaction_type: "adjustment",
-        quantity: quantityDelta,
-        previous_stock: existingProduct.stock_quantity,
-        new_stock: values.stockQuantity,
-        reference_type: "product_update",
-        notes: "Stock updated from product edit",
-        created_by: user.id,
-      });
-
-    if (transactionError) {
-      inventoryHistoryWarning =
-        " Product was updated, but inventory history was not recorded.";
-    }
-  }
-
-  revalidatePath("/products");
-  revalidatePath(`/products/${productId}/edit`);
-  revalidatePath("/");
-
-  return {
-    message: inventoryHistoryWarning
-      ? `Product updated.${inventoryHistoryWarning}`
-      : "Product updated successfully.",
-    success: true,
-  };
+  revalidatePath("/products"); revalidatePath(`/products/${productId}/edit`); revalidatePath("/");
+  return { message: "Product updated successfully.", success: true };
 }
 
-export async function deleteProduct(
-  workspaceId: string,
-  productId: string,
-): Promise<ProductActionState> {
+export async function deleteProduct(workspaceId: string, productId: string): Promise<ProductActionState> {
   const { supabase, user, error } = await getAuthorizedUser(workspaceId);
-
-  if (error || !user) {
-    return { message: error ?? "Unauthorized", success: false };
-  }
-
-  const { data: existingProduct, error: fetchError } = await supabase
-    .from("products")
-    .select("image_url")
-    .eq("id", productId)
-    .eq("workspace_id", workspaceId)
-    .maybeSingle();
-
-  if (fetchError || !existingProduct) {
-    return { message: "Product not found or you don't have permission to delete it.", success: false };
-  }
-
-  const admin = createAdminClient();
-  const { count: saleCount } = await admin
-    .from("sale_items")
-    .select("id", { count: "exact", head: true })
-    .eq("product_id", productId);
-
-  if (saleCount && saleCount > 0) {
-    return {
-      message: "This product cannot be deleted because it is used in sales records.",
-      success: false,
-    };
-  }
-
-  const { error: productError } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", productId)
-    .eq("workspace_id", workspaceId);
-
-  if (productError) {
-    return { message: productError.message, success: false };
-  }
-
-  if (existingProduct.image_url) {
-    const imagePath = getStoragePath(existingProduct.image_url);
-    if (imagePath) {
-      await supabase.storage.from("product-images").remove([imagePath]);
-    }
-  }
-
-  revalidatePath("/products");
-  revalidatePath("/");
-
-  return { message: "Product deleted successfully", success: true };
+  if (error || !user) return { message: error ?? "Unauthorized", success: false };
+  const { data: product } = await supabase.from("products").select("image_url").eq("id", productId).eq("workspace_id", workspaceId).maybeSingle();
+  if (!product) return { message: "Product not found or you don't have permission to delete it.", success: false };
+  const admin = createAdminClient(); const { count: saleCount } = await admin.from("sale_items").select("id", { count: "exact", head: true }).eq("product_id", productId);
+  if (saleCount) return { message: "This product cannot be deleted because it is used in sales records.", success: false };
+  const { error: deleteError } = await supabase.from("products").delete().eq("id", productId).eq("workspace_id", workspaceId);
+  if (deleteError) return { message: deleteError.message, success: false };
+  const path = getStoragePath(product.image_url); if (path) await supabase.storage.from("product-images").remove([path]);
+  revalidatePath("/products"); revalidatePath("/"); return { message: "Product deleted successfully", success: true };
 }

@@ -28,7 +28,7 @@ CREATE OR REPLACE FUNCTION create_sale_transaction(
   p_notes           TEXT,
   p_sale_date       DATE,
   p_payment_method  TEXT,
-  p_items           JSONB   -- [{productId, productName, quantity, unitPrice, discount, total}]
+  p_items           JSONB   -- [{productId, productName, quantity, unitPrice, discount, total, productUnitId, unitName}]
 )
 RETURNS UUID
 LANGUAGE plpgsql
@@ -120,7 +120,8 @@ BEGIN
     IF (v_item->>'type') = 'one_time' OR (v_item->>'productId') IS NULL OR (v_item->>'productId') = '' THEN
       INSERT INTO sale_items (
         workspace_id, sale_id, product_id, product_name,
-        quantity, unit_price, discount, tax, total, item_type
+        quantity, unit_price, discount, tax, total, item_type,
+        product_unit_id, unit_name
       ) VALUES (
         p_workspace_id, v_sale_id, NULL,
         v_item->>'productName',
@@ -129,7 +130,9 @@ BEGIN
         (v_item->>'discount')::NUMERIC,
         0,
         (v_item->>'total')::NUMERIC,
-        'one_time'
+        'one_time',
+        NULL,
+        'pc'
       );
       CONTINUE;
     END IF;
@@ -138,7 +141,8 @@ BEGIN
 
     INSERT INTO sale_items (
       workspace_id, sale_id, product_id, product_name,
-      quantity, unit_price, discount, tax, total, item_type
+      quantity, unit_price, discount, tax, total, item_type,
+      product_unit_id, unit_name
     ) VALUES (
       p_workspace_id, v_sale_id, v_product_id,
       v_item->>'productName',
@@ -147,7 +151,12 @@ BEGIN
       (v_item->>'discount')::NUMERIC,
       0,
       (v_item->>'total')::NUMERIC,
-      'product'
+      'product',
+      CASE WHEN (v_item->>'productUnitId') IS NOT NULL AND (v_item->>'productUnitId') <> '' 
+           THEN (v_item->>'productUnitId')::UUID 
+           ELSE NULL 
+      END,
+      COALESCE(NULLIF(v_item->>'unitName', ''), 'pc')
     );
 
     SELECT stock_quantity INTO v_prev_stock

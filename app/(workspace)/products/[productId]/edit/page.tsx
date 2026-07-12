@@ -18,11 +18,11 @@ export default async function EditProductPage({
 
   const { productId } = await params;
 
-  const [{ data: product }, { data: categories }] = await Promise.all([
+  const [{ data: product }, { data: categories }, { data: units }, { data: productUnits }] = await Promise.all([
     supabase
       .from("products")
       .select(
-        "id, name, sku, barcode, description, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, expiry_date, is_active, track_inventory",
+        "id, name, sku, barcode, description, image_url, category_id, is_active",
       )
       .eq("workspace_id", workspaceId)
       .eq("id", productId)
@@ -32,9 +32,22 @@ export default async function EditProductPage({
       .select("id, name")
       .eq("workspace_id", workspaceId)
       .order("name", { ascending: true }),
+    supabase.from("units").select("id, name, symbol").order("name", { ascending: true }),
+    supabase.from("product_units").select("id, unit_id, conversion_factor, is_default").eq("product_id", productId),
   ]);
 
   if (!product) notFound();
+
+  const { data: prices } = productUnits?.length
+    ? await supabase.from("product_prices").select("product_unit_id, selling_price, purchase_price").in("product_unit_id", productUnits.map((unit) => unit.id))
+    : { data: [] };
+  const productWithUnits = {
+    ...product,
+    units: (productUnits ?? []).map((unit) => {
+      const price = prices?.find((item) => item.product_unit_id === unit.id);
+      return { unitId: unit.unit_id, conversionFactor: Number(unit.conversion_factor), isDefault: unit.is_default, sellingPrice: Number(price?.selling_price ?? 0), purchasePrice: Number(price?.purchase_price ?? 0) };
+    }),
+  };
 
   return (
     <div className="flex flex-col items-center">
@@ -43,7 +56,7 @@ export default async function EditProductPage({
           <div>
             <h1 className="text-2xl font-bold text-foreground">Edit product</h1>
             <p className="text-sm text-muted-foreground">
-              Update product details, image, price, and stock.
+              Update product details, units, prices, and image.
             </p>
           </div>
           <Button variant="outline" asChild>
@@ -60,7 +73,8 @@ export default async function EditProductPage({
               workspaceId={workspaceId}
               workspaceSlug=""
               categories={categories ?? []}
-              product={product}
+              units={units ?? []}
+              product={productWithUnits}
             />
           </CardContent>
         </Card>

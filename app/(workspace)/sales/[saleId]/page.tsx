@@ -144,6 +144,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Product</TableHead>
+                  <TableHead className="text-center">Unit</TableHead>
                   <TableHead className="text-center">Qty</TableHead>
                   <TableHead className="text-right">Unit Price</TableHead>
                   <TableHead className="text-center">Disc %</TableHead>
@@ -155,6 +156,9 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">
                       {item.product_name}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {item.unit_name || "pc"}
                     </TableCell>
                     <TableCell className="text-center">
                       {item.quantity}
