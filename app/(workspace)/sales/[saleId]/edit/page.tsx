@@ -43,14 +43,29 @@ export default async function EditSalePage({ params }: EditSalePageProps) {
     saleDate: sale.sale_date,
     discount: sale.discount || 0,
     notes: sale.notes || undefined,
-    items: items.map((item) => ({
-      productId: item.product_id,
-      productName: item.product_name,
-      quantity: item.quantity,
-      unitPrice: Number(item.unit_price),
-      discount: item.discount || 0,
-      total: Number(item.total),
-    })),
+    items: items.map((item) => {
+      if (item.product_id) {
+        return {
+          type: "product" as const,
+          productId: item.product_id,
+          productName: item.product_name,
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price),
+          discount: item.discount || 0,
+          total: Number(item.total),
+        };
+      } else {
+        return {
+          type: "one_time" as const,
+          productId: null,
+          productName: item.product_name,
+          quantity: item.quantity,
+          unitPrice: Number(item.unit_price),
+          discount: item.discount || 0,
+          total: Number(item.total),
+        };
+      }
+    }),
     paidAmount: Number(sale.paid_amount),
     paymentMethod: (sale as any).payment_method || undefined,
   };

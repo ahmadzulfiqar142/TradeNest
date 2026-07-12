@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, ShoppingCart, Wallet } from "lucide-react";
+import { Plus, Trash2, ShoppingCart, Wallet, Package, FileText } from "lucide-react";
 import { createSale } from "@/actions/sale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,7 +19,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { PAYMENT_METHODS } from "@/schemas/payment";
-import { createSaleSchema, type CreateSaleFormValues } from "@/schemas/sale";
+import {
+  createSaleSchema,
+  LineItemType,
+  type CreateSaleFormValues,
+  type SaleItemFormValues,
+} from "@/schemas/sale";
 import { useToast } from "@/hooks/use-toast";
 
 type Product = {
@@ -45,14 +50,7 @@ type SaleFormProps = {
     saleDate?: string;
     discount?: number;
     notes?: string | null;
-    items: Array<{
-      productId: string;
-      productName: string;
-      quantity: number;
-      unitPrice: number;
-      discount: number;
-      total: number;
-    }>;
+    items: SaleItemFormValues[];
     paidAmount?: number;
     paymentMethod?: string | null;
   };
@@ -61,6 +59,10 @@ type SaleFormProps = {
 
 const selectClass =
   "flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:bg-muted";
+
+function calcTotal(unitPrice: number, quantity: number, discount: number) {
+  return Math.max(0, unitPrice * quantity * (1 - discount / 100));
+}
 
 export function SaleForm({
   workspaceId,
@@ -82,19 +84,7 @@ export function SaleForm({
       saleDate: initialData?.saleDate ?? new Date().toISOString().split("T")[0],
       discount: initialData?.discount ?? 0,
       notes: initialData?.notes ?? null,
-      items: initialData?.items?.length
-        ? initialData.items.map((item) => ({ ...item, unit: null }))
-        : [
-            {
-              productId: "",
-              productName: "",
-              quantity: 1,
-              unitPrice: 0,
-              discount: 0,
-              total: 0,
-              unit: null,
-            },
-          ],
+      items: initialData?.items ?? [],
       paidAmount: initialData?.paidAmount ?? 0,
       paymentMethod: initialData?.paymentMethod ?? null,
     },
@@ -107,13 +97,9 @@ export function SaleForm({
   const subtotal = items.reduce((sum, item) => sum + item.total, 0);
   const total = Math.max(0, subtotal - discount);
 
-  // Fetch advance balance when customer changes, then auto-fill payment fields
   useEffect(() => {
     async function fetchAdvanceBalance() {
-      if (!customerId) {
-        setAdvanceBalance(0);
-        return;
-      }
+      if (!customerId) { setAdvanceBalance(0); return; }
       setIsLoadingAdvance(true);
       try {
         const { getCustomerAdvanceBalance } = await import("@/actions/sale");
@@ -131,58 +117,71 @@ export function SaleForm({
       }
     }
     fetchAdvanceBalance();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId, workspaceId]);
 
-  // Keep paidAmount/paymentMethod in sync when total changes and advance is available
   useEffect(() => {
     if (advanceBalance > 0 && total > 0) {
       form.setValue("paidAmount", Math.min(advanceBalance, total));
       form.setValue("paymentMethod", "advance");
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [total]);
 
-  const updateItem = (
-    index: number,
-    field: keyof CreateSaleFormValues["items"][0],
-    value: string | number,
-  ) => {
-    const updated = [...items];
-    const item = { ...updated[index], [field]: value };
-    if (field === "productId") {
-      const p = products.find((p) => p.id === value);
-      if (p) {
-        item.productName = p.name;
-        item.unitPrice = p.selling_price;
-      }
-    }
-    item.total = Math.max(
-      0,
-      item.unitPrice * item.quantity * (1 - item.discount / 100),
-    );
-    updated[index] = item;
-    form.setValue("items", updated);
-  };
-
-  const addItem = () =>
+  function addProductItem() {
+    const p = products[0];
     form.setValue("items", [
       ...items,
       {
-        productId: "",
+        type: LineItemType.Product,
+        productId: p?.id ?? "",
+        productName: p?.name ?? "",
+        quantity: 1,
+        unitPrice: p?.selling_price ?? 0,
+        discount: 0,
+        total: p?.selling_price ?? 0,
+      },
+    ]);
+  }
+
+  function addOneTimeItem() {
+    form.setValue("items", [
+      ...items,
+      {
+        type: LineItemType.OneTime,
+        productId: null,
         productName: "",
         quantity: 1,
         unitPrice: 0,
         discount: 0,
         total: 0,
-        unit: null,
       },
     ]);
+  }
+
+  function updateItem(
+    index: number,
+    patch: Partial<Omit<SaleItemFormValues, "type">>,
+  ) {
+    const updated = [...items];
+    const item = { ...updated[index], ...patch };
+    item.total = calcTotal(item.unitPrice, item.quantity, item.discount);
+    updated[index] = item as SaleItemFormValues;
+    form.setValue("items", updated);
+  }
+
+  function selectProduct(index: number, productId: string | null) {
+    const p = products.find((x) => x.id === productId);
+    if (!p) return;
+    updateItem(index, {
+      productId: p.id,
+      productName: p.name,
+      unitPrice: p.selling_price,
+    });
+  }
+
   const removeItem = (index: number) =>
-    form.setValue(
-      "items",
-      items.filter((_, i) => i !== index),
-    );
+    form.setValue("items", items.filter((_, i) => i !== index));
 
   const onSubmit = async (data: CreateSaleFormValues) => {
     let result;
@@ -192,7 +191,6 @@ export function SaleForm({
     } else {
       result = await createSale(workspaceId, data);
     }
-
     if (result.success) {
       success(result.message);
       if (result.saleId) router.push(`/sales/${result.saleId}`);
@@ -216,9 +214,7 @@ export function SaleForm({
                   <FormItem>
                     <FormLabel>
                       Customer{" "}
-                      <span className="text-muted-foreground text-xs">
-                        (optional)
-                      </span>
+                      <span className="text-muted-foreground text-xs">(optional)</span>
                     </FormLabel>
                     <FormControl>
                       <Autocomplete
@@ -227,10 +223,8 @@ export function SaleForm({
                           label: `${c.first_name} ${c.last_name}`,
                           subtitle: c.phone,
                         }))}
-                        value={field.value}
-                        onValueChange={(v) =>
-                          form.setValue("customerId", v ?? null)
-                        }
+                        value={field.value ?? null}
+                        onValueChange={(v) => form.setValue("customerId", v ?? null)}
                         placeholder="Walk-in / Search customer..."
                       />
                     </FormControl>
@@ -277,60 +271,79 @@ export function SaleForm({
         {/* Line Items */}
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-foreground">Items</h2>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={addItem}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Item
-              </Button>
-            </div>
+            <h2 className="text-base font-semibold text-foreground mb-4">Items</h2>
 
             <div className="space-y-3">
-              <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
-                <div className="col-span-4">Product</div>
-                <div className="col-span-2 text-center">Qty</div>
-                <div className="col-span-2 text-center">Unit Price</div>
-                <div className="col-span-2 text-center">Disc %</div>
-                <div className="col-span-1 text-right">Total</div>
-                <div className="col-span-1" />
-              </div>
+              {items.length > 0 && (
+                <div className="hidden md:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
+                  <div className="col-span-4">Product / Description</div>
+                  <div className="col-span-2 text-center">Qty</div>
+                  <div className="col-span-2 text-center">Unit Price</div>
+                  <div className="col-span-2 text-center">Disc %</div>
+                  <div className="col-span-1 text-right">Total</div>
+                  <div className="col-span-1" />
+                </div>
+              )}
 
               {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-12 gap-2 items-center"
-                >
+                <div key={index} className="grid grid-cols-12 gap-2 items-start">
+                  {/* Product or one-time description cell */}
                   <div className="col-span-12 md:col-span-4">
-                    <Autocomplete
-                      options={products.map((p) => ({
-                        id: p.id,
-                        label: p.name,
-                        subtitle: `Rs. ${Number(p.selling_price).toLocaleString()} · Stock: ${p.stock_quantity}`,
-                      }))}
-                      value={item.productId || null}
-                      onValueChange={(v) =>
-                        updateItem(index, "productId", v ?? "")
-                      }
-                      placeholder="Select product..."
-                    />
+                    {item.type === LineItemType.Product ? (
+                      <div className="space-y-1">
+                        <Autocomplete
+                          options={products.map((p) => ({
+                            id: p.id,
+                            label: p.name,
+                            subtitle: p.sku ?? undefined,
+                          }))}
+                          value={item.productId ?? null}
+                          onValueChange={(v) => selectProduct(index, v)}
+                          placeholder="Search product..."
+                          displayFormat={(opt) => {
+                            const p = products.find((x) => x.id === opt.id);
+                            return p
+                              ? `${opt.label} — Rs. ${Number(p.selling_price).toLocaleString()} (Stock: ${p.stock_quantity})`
+                              : opt.label;
+                          }}
+                        />
+                        {form.formState.errors.items?.[index] && (
+                          <p className="text-xs text-destructive">
+                            {(form.formState.errors.items[index] as { productId?: { message?: string } })?.productId?.message}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <Input
+                          placeholder="Item description..."
+                          value={item.productName}
+                          onChange={(e) =>
+                            updateItem(index, { productName: e.target.value })
+                          }
+                        />
+                        {form.formState.errors.items?.[index] && (
+                          <p className="text-xs text-destructive">
+                            {(form.formState.errors.items[index] as { productName?: { message?: string } })?.productName?.message}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
+
                   <div className="col-span-4 md:col-span-2">
                     <Input
                       type="number"
                       min={1}
                       value={item.quantity}
                       onChange={(e) =>
-                        updateItem(index, "quantity", Number(e.target.value))
+                        updateItem(index, { quantity: Number(e.target.value) })
                       }
                       className="text-center"
                       placeholder="Qty"
                     />
                   </div>
+
                   <div className="col-span-4 md:col-span-2">
                     <Input
                       type="number"
@@ -338,12 +351,14 @@ export function SaleForm({
                       step="0.01"
                       value={item.unitPrice}
                       onChange={(e) =>
-                        updateItem(index, "unitPrice", Number(e.target.value))
+                        updateItem(index, { unitPrice: Number(e.target.value) })
                       }
                       className="text-center"
                       placeholder="Price"
+                      readOnly={item.type === LineItemType.Product}
                     />
                   </div>
+
                   <div className="col-span-3 md:col-span-2">
                     <Input
                       type="number"
@@ -351,31 +366,58 @@ export function SaleForm({
                       max={100}
                       value={item.discount}
                       onChange={(e) =>
-                        updateItem(index, "discount", Number(e.target.value))
+                        updateItem(index, { discount: Number(e.target.value) })
                       }
                       className="text-center"
                       placeholder="0"
                     />
                   </div>
-                  <div className="col-span-4 md:col-span-1 text-right font-medium text-sm">
+
+                  <div className="col-span-4 md:col-span-1 text-right font-medium text-sm pt-2">
                     Rs. {Number(item.total).toLocaleString()}
                   </div>
-                  <div className="col-span-1 flex justify-end">
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
+
+                  <div className="col-span-1 flex justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-6 pt-4 border-t flex flex-col items-end gap-2 text-sm">
+            {/* Add line item buttons */}
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={addProductItem}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                <Package className="h-4 w-4" />
+                Add product
+              </button>
+              <span className="text-muted-foreground text-xs">or</span>
+              <button
+                type="button"
+                onClick={addOneTimeItem}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                <FileText className="h-4 w-4" />
+                Add one-time item
+              </button>
+            </div>
+
+            {form.formState.errors.items?.root && (
+              <p className="text-xs text-destructive mt-1">
+                {form.formState.errors.items.root.message}
+              </p>
+            )}
+
+            <div className="mt-4 pt-4 border-t flex flex-col items-end gap-2 text-sm">
               <div className="flex gap-8 text-muted-foreground">
                 <span>Subtotal</span>
                 <span className="font-medium text-foreground w-32 text-right">
@@ -400,9 +442,7 @@ export function SaleForm({
               </div>
               <div className="flex gap-8 text-base font-bold">
                 <span>Total</span>
-                <span className="w-32 text-right">
-                  Rs. {total.toLocaleString()}
-                </span>
+                <span className="w-32 text-right">Rs. {total.toLocaleString()}</span>
               </div>
             </div>
           </CardContent>
@@ -418,7 +458,6 @@ export function SaleForm({
               </span>
             </h2>
 
-            {/* Advance Balance Info */}
             {customerId && advanceBalance > 0 && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-green-600" />
@@ -426,14 +465,10 @@ export function SaleForm({
                   Customer has advance balance:{" "}
                   <strong>Rs. {advanceBalance.toLocaleString()}</strong>
                   {total > 0 && advanceBalance >= total && (
-                    <span className="ml-2 text-green-600">
-                      (will be fully applied)
-                    </span>
+                    <span className="ml-2 text-green-600">(will be fully applied)</span>
                   )}
                   {total > 0 && advanceBalance < total && (
-                    <span className="ml-2 text-green-600">
-                      (will be partially applied)
-                    </span>
+                    <span className="ml-2 text-green-600">(will be partially applied)</span>
                   )}
                 </span>
               </div>
@@ -476,9 +511,7 @@ export function SaleForm({
                   <FormItem>
                     <FormLabel>
                       Payment Method{" "}
-                      {paidAmount > 0 && (
-                        <span className="text-destructive">*</span>
-                      )}
+                      {paidAmount > 0 && <span className="text-destructive">*</span>}
                     </FormLabel>
                     <FormControl>
                       <select
@@ -504,18 +537,12 @@ export function SaleForm({
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => router.back()}
-          >
+          <Button type="button" variant="secondary" onClick={() => router.back()}>
             Cancel
           </Button>
           <Button
             type="submit"
-            disabled={
-              form.formState.isSubmitting || items.every((i) => !i.productId)
-            }
+            disabled={form.formState.isSubmitting || items.length === 0}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             {form.formState.isSubmitting

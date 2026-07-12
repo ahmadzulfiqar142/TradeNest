@@ -430,8 +430,9 @@ export interface Database {
           id: string;
           workspace_id: string;
           sale_id: string;
-          product_id: string;
+          product_id: string | null;
           product_name: string;
+          item_type: "product" | "one_time";
           quantity: number;
           unit_price: number;
           discount: number;
@@ -443,8 +444,9 @@ export interface Database {
           id?: string;
           workspace_id: string;
           sale_id: string;
-          product_id: string;
+          product_id?: string | null;
           product_name: string;
+          item_type?: "product" | "one_time";
           quantity: number;
           unit_price: number;
           discount?: number;
@@ -454,6 +456,7 @@ export interface Database {
         };
         Update: {
           product_name?: string;
+          item_type?: "product" | "one_time";
           quantity?: number;
           unit_price?: number;
           discount?: number;
