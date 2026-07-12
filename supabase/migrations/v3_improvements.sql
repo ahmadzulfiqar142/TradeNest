@@ -50,6 +50,11 @@ DECLARE
 BEGIN
   -- ── 1. Stock validation ──────────────────────────────────────────────────
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    -- Skip stock validation for one-time line items
+    CONTINUE WHEN (v_item->>'type') = 'one_time'
+               OR (v_item->>'productId') IS NULL
+               OR (v_item->>'productId') = '';
+
     v_product_id := (v_item->>'productId')::UUID;
     v_qty        := (v_item->>'quantity')::INTEGER;
 
@@ -109,12 +114,31 @@ BEGIN
 
   -- ── 4. Insert items + deduct stock ──────────────────────────────────────
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    v_qty := (v_item->>'quantity')::INTEGER;
+
+    -- One-time line items: no product FK, no stock deduction
+    IF (v_item->>'type') = 'one_time' OR (v_item->>'productId') IS NULL OR (v_item->>'productId') = '' THEN
+      INSERT INTO sale_items (
+        workspace_id, sale_id, product_id, product_name,
+        quantity, unit_price, discount, tax, total, item_type
+      ) VALUES (
+        p_workspace_id, v_sale_id, NULL,
+        v_item->>'productName',
+        v_qty,
+        (v_item->>'unitPrice')::NUMERIC,
+        (v_item->>'discount')::NUMERIC,
+        0,
+        (v_item->>'total')::NUMERIC,
+        'one_time'
+      );
+      CONTINUE;
+    END IF;
+
     v_product_id := (v_item->>'productId')::UUID;
-    v_qty        := (v_item->>'quantity')::INTEGER;
 
     INSERT INTO sale_items (
       workspace_id, sale_id, product_id, product_name,
-      quantity, unit_price, discount, tax, total
+      quantity, unit_price, discount, tax, total, item_type
     ) VALUES (
       p_workspace_id, v_sale_id, v_product_id,
       v_item->>'productName',
@@ -122,7 +146,8 @@ BEGIN
       (v_item->>'unitPrice')::NUMERIC,
       (v_item->>'discount')::NUMERIC,
       0,
-      (v_item->>'total')::NUMERIC
+      (v_item->>'total')::NUMERIC,
+      'product'
     );
 
     SELECT stock_quantity INTO v_prev_stock

@@ -127,7 +127,8 @@ export async function createSale(
       p_sale_date: v.saleDate,
       p_payment_method: cashPaid > 0 ? (v.paymentMethod ?? "") : "",
       p_items: v.items.map((item) => ({
-        productId: item.productId,
+        type: item.type,
+        productId: item.type === "product" ? item.productId : null,
         productName: item.productName,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -189,6 +190,8 @@ export async function cancelSale(
     .eq("sale_id", saleId);
 
   for (const item of items ?? []) {
+    if (!item.product_id) continue;
+
     const { data: product } = await supabase
       .from("products")
       .select("stock_quantity")
@@ -491,7 +494,10 @@ export async function updateSale(
   const saleItems = v.items.map((item) => ({
     sale_id: saleId,
     workspace_id: workspaceId,
-    product_id: item.productId || "",
+    item_type: item.type,
+    product_id: (item.type === "product" ? item.productId : null) as
+      | string
+      | null,
     product_name: item.productName,
     quantity: item.quantity,
     unit_price: item.unitPrice,
