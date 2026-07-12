@@ -22,6 +22,8 @@ export const productLineItemSchema = z.object({
   type: z.literal(LineItemType.Product),
   productId: z.string("Select a product"),
   productName: z.string(),
+  productUnitId: z.string().nullable().optional(),
+  unitName: z.string().nullable().optional(),
   ...baseItemFields,
 });
 
@@ -32,6 +34,8 @@ export const oneTimeLineItemSchema = z.object({
     .string("Item name is required")
     .min(1, "Item name is required")
     .max(100, "Item must be less than 100 characters"),
+  productUnitId: z.string().nullable().optional(),
+  unitName: z.string().nullable().optional(),
   ...baseItemFields,
 });
 

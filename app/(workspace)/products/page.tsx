@@ -12,7 +12,7 @@ export default async function ProductsPage() {
     supabase
       .from("products")
       .select(
-        "id, name, sku, image_url, category_id, purchase_price, selling_price, stock_quantity, min_stock_quantity, is_active, created_at",
+        "id, name, sku, image_url, category_id, selling_price, is_active, created_at",
       )
       .eq("workspace_id", workspaceId)
       .is("deleted_at", null)
@@ -27,13 +27,6 @@ export default async function ProductsPage() {
   const productRows = products ?? [];
   const categoryRows = categories ?? [];
   const categoryNames = new Map(categoryRows.map((c) => [c.id, c.name]));
-  const lowStockCount = productRows.filter(
-    (p) => p.stock_quantity <= (p.min_stock_quantity ?? 0),
-  ).length;
-  const inventoryValue = productRows.reduce(
-    (total, p) => total + Number(p.purchase_price) * p.stock_quantity,
-    0,
-  );
   const activeProducts = productRows.filter(
     (p) => p.is_active !== false,
   ).length;
@@ -45,8 +38,6 @@ export default async function ProductsPage() {
       stats={{
         activeProducts,
         totalCategories: categoryRows.length,
-        lowStockCount,
-        inventoryValue,
       }}
       workspaceId={workspaceId}
     />

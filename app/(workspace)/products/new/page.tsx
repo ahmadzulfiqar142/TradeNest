@@ -11,11 +11,10 @@ export default async function NewProductPage() {
   const workspaceId = await getActiveWorkspaceId();
   if (!workspaceId) redirect("/create-workspace");
 
-  const { data: categories } = await supabase
-    .from("categories")
-    .select("id, name")
-    .eq("workspace_id", workspaceId)
-    .order("name", { ascending: true });
+  const [{ data: categories }, { data: units }] = await Promise.all([
+    supabase.from("categories").select("id, name").eq("workspace_id", workspaceId).eq("is_active", true).order("name", { ascending: true }),
+    supabase.from("units").select("id, name, symbol").order("name", { ascending: true }),
+  ]);
 
   return (
     <div className="flex flex-col items-center">
@@ -24,7 +23,7 @@ export default async function NewProductPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Add product</h1>
             <p className="text-sm text-muted-foreground">
-              Create a product with image, price, stock, and category.
+              Create a product with its units, prices, image, and category.
             </p>
           </div>
           <Button
@@ -42,6 +41,7 @@ export default async function NewProductPage() {
             workspaceId={workspaceId}
             workspaceSlug=""
             categories={categories ?? []}
+            units={units ?? []}
           />
         </div>
       </div>

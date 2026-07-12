@@ -4,7 +4,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Plus, Trash2, ShoppingCart, Wallet, Package, FileText } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  ShoppingCart,
+  Wallet,
+  Package,
+  FileText,
+} from "lucide-react";
 import { createSale } from "@/actions/sale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,12 +34,21 @@ import {
 } from "@/schemas/sale";
 import { useToast } from "@/hooks/use-toast";
 
+type ProductUnit = {
+  unitId: string;
+  unitName: string;
+  conversionFactor: number;
+  isDefault: boolean;
+  sellingPrice: number;
+};
+
 type Product = {
   id: string;
   name: string;
   selling_price: number;
   stock_quantity: number;
   sku: string | null;
+  units: ProductUnit[];
 };
 type Customer = {
   id: string;
@@ -99,7 +115,10 @@ export function SaleForm({
 
   useEffect(() => {
     async function fetchAdvanceBalance() {
-      if (!customerId) { setAdvanceBalance(0); return; }
+      if (!customerId) {
+        setAdvanceBalance(0);
+        return;
+      }
       setIsLoadingAdvance(true);
       try {
         const { getCustomerAdvanceBalance } = await import("@/actions/sale");
@@ -151,6 +170,8 @@ export function SaleForm({
         type: LineItemType.OneTime,
         productId: null,
         productName: "",
+        productUnitId: null,
+        unitName: null,
         quantity: 1,
         unitPrice: 0,
         discount: 0,
@@ -161,7 +182,10 @@ export function SaleForm({
 
   function updateItem(
     index: number,
-    patch: Partial<Omit<SaleItemFormValues, "type">>,
+    patch: Partial<Omit<SaleItemFormValues, "type">> & {
+      productUnitId?: string | null;
+      unitName?: string | null;
+    },
   ) {
     const updated = [...items];
     const item = { ...updated[index], ...patch };
@@ -173,15 +197,35 @@ export function SaleForm({
   function selectProduct(index: number, productId: string | null) {
     const p = products.find((x) => x.id === productId);
     if (!p) return;
+    const defaultUnit = p.units.find((u) => u.isDefault) || p.units[0];
     updateItem(index, {
       productId: p.id,
       productName: p.name,
-      unitPrice: p.selling_price,
+      productUnitId: defaultUnit?.unitId ?? null,
+      unitName: defaultUnit?.unitName ?? "pc",
+      unitPrice: defaultUnit?.sellingPrice ?? p.selling_price,
+    });
+  }
+
+  function selectUnit(index: number, unitId: string | null) {
+    if (!unitId) return;
+    const item = items[index];
+    const p = products.find((x) => x.id === item.productId);
+    if (!p) return;
+    const unit = p.units.find((u) => u.unitId === unitId);
+    if (!unit) return;
+    updateItem(index, {
+      productUnitId: unit.unitId,
+      unitName: unit.unitName,
+      unitPrice: unit.sellingPrice,
     });
   }
 
   const removeItem = (index: number) =>
-    form.setValue("items", items.filter((_, i) => i !== index));
+    form.setValue(
+      "items",
+      items.filter((_, i) => i !== index),
+    );
 
   const onSubmit = async (data: CreateSaleFormValues) => {
     let result;
@@ -214,7 +258,9 @@ export function SaleForm({
                   <FormItem>
                     <FormLabel>
                       Customer{" "}
-                      <span className="text-muted-foreground text-xs">(optional)</span>
+                      <span className="text-muted-foreground text-xs">
+                        (optional)
+                      </span>
                     </FormLabel>
                     <FormControl>
                       <Autocomplete
@@ -224,7 +270,9 @@ export function SaleForm({
                           subtitle: c.phone,
                         }))}
                         value={field.value ?? null}
-                        onValueChange={(v) => form.setValue("customerId", v ?? null)}
+                        onValueChange={(v) =>
+                          form.setValue("customerId", v ?? null)
+                        }
                         placeholder="Walk-in / Search customer..."
                       />
                     </FormControl>
@@ -271,7 +319,9 @@ export function SaleForm({
         {/* Line Items */}
         <Card>
           <CardContent className="pt-6">
-            <h2 className="text-base font-semibold text-foreground mb-4">Items</h2>
+            <h2 className="text-base font-semibold text-foreground mb-4">
+              Items
+            </h2>
 
             <div className="space-y-3">
               {items.length > 0 && (
@@ -286,7 +336,10 @@ export function SaleForm({
               )}
 
               {items.map((item, index) => (
-                <div key={index} className="grid grid-cols-12 gap-2 items-start">
+                <div
+                  key={index}
+                  className="grid grid-cols-12 gap-2 items-start"
+                >
                   {/* Product or one-time description cell */}
                   <div className="col-span-12 md:col-span-4">
                     {item.type === LineItemType.Product ? (
@@ -307,9 +360,38 @@ export function SaleForm({
                               : opt.label;
                           }}
                         />
+                        {item.productId &&
+                          (() => {
+                            const product = products.find(
+                              (p) => p.id === item.productId,
+                            );
+                            const units = product?.units || [];
+                            return units.length > 1 ? (
+                              <select
+                                value={item.productUnitId ?? ""}
+                                onChange={(e) =>
+                                  selectUnit(index, e.target.value || null)
+                                }
+                                className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                {units.map((unit) => (
+                                  <option key={unit.unitId} value={unit.unitId}>
+                                    {unit.unitName}{" "}
+                                    {unit.isDefault ? "(Default)" : ""}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : null;
+                          })()}
                         {form.formState.errors.items?.[index] && (
                           <p className="text-xs text-destructive">
-                            {(form.formState.errors.items[index] as { productId?: { message?: string } })?.productId?.message}
+                            {
+                              (
+                                form.formState.errors.items[index] as {
+                                  productId?: { message?: string };
+                                }
+                              )?.productId?.message
+                            }
                           </p>
                         )}
                       </div>
@@ -322,9 +404,31 @@ export function SaleForm({
                             updateItem(index, { productName: e.target.value })
                           }
                         />
+                        <select
+                          value={item.unitName || "pc"}
+                          onChange={(e) =>
+                            updateItem(index, { unitName: e.target.value })
+                          }
+                          className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <option value="pc">Piece (pc)</option>
+                          <option value="box">Box</option>
+                          <option value="pack">Pack</option>
+                          <option value="set">Set</option>
+                          <option value="kg">Kilogram (kg)</option>
+                          <option value="g">Gram (g)</option>
+                          <option value="L">Liter (L)</option>
+                          <option value="ml">Milliliter (ml)</option>
+                        </select>
                         {form.formState.errors.items?.[index] && (
                           <p className="text-xs text-destructive">
-                            {(form.formState.errors.items[index] as { productName?: { message?: string } })?.productName?.message}
+                            {
+                              (
+                                form.formState.errors.items[index] as {
+                                  productName?: { message?: string };
+                                }
+                              )?.productName?.message
+                            }
                           </p>
                         )}
                       </div>
@@ -442,7 +546,9 @@ export function SaleForm({
               </div>
               <div className="flex gap-8 text-base font-bold">
                 <span>Total</span>
-                <span className="w-32 text-right">Rs. {total.toLocaleString()}</span>
+                <span className="w-32 text-right">
+                  Rs. {total.toLocaleString()}
+                </span>
               </div>
             </div>
           </CardContent>
@@ -465,10 +571,14 @@ export function SaleForm({
                   Customer has advance balance:{" "}
                   <strong>Rs. {advanceBalance.toLocaleString()}</strong>
                   {total > 0 && advanceBalance >= total && (
-                    <span className="ml-2 text-green-600">(will be fully applied)</span>
+                    <span className="ml-2 text-green-600">
+                      (will be fully applied)
+                    </span>
                   )}
                   {total > 0 && advanceBalance < total && (
-                    <span className="ml-2 text-green-600">(will be partially applied)</span>
+                    <span className="ml-2 text-green-600">
+                      (will be partially applied)
+                    </span>
                   )}
                 </span>
               </div>
@@ -511,7 +621,9 @@ export function SaleForm({
                   <FormItem>
                     <FormLabel>
                       Payment Method{" "}
-                      {paidAmount > 0 && <span className="text-destructive">*</span>}
+                      {paidAmount > 0 && (
+                        <span className="text-destructive">*</span>
+                      )}
                     </FormLabel>
                     <FormControl>
                       <select
@@ -537,7 +649,11 @@ export function SaleForm({
         </Card>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => router.back()}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => router.back()}
+          >
             Cancel
           </Button>
           <Button

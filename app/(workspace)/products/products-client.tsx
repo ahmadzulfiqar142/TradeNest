@@ -35,10 +35,7 @@ interface Product {
   sku: string | null;
   image_url: string | null;
   category_id: string | null;
-  purchase_price: number;
   selling_price: number;
-  stock_quantity: number;
-  min_stock_quantity: number | null;
   is_active: boolean | null;
   created_at: string;
 }
@@ -49,8 +46,6 @@ interface ProductsClientProps {
   stats: {
     activeProducts: number;
     totalCategories: number;
-    lowStockCount: number;
-    inventoryValue: number;
   };
   workspaceId: string;
 }
@@ -121,18 +116,6 @@ export default function ProductsClient({
         value ? (categoryNames.get(value) ?? "Unknown") : "Uncategorized",
     },
     {
-      key: "stock_quantity" as const,
-      label: "Stock",
-      sortable: true,
-      render: (value: number) => value,
-    },
-    {
-      key: "purchase_price" as const,
-      label: "Cost",
-      sortable: true,
-      render: (value: number) => `Rs ${Number(value).toFixed(2)}`,
-    },
-    {
       key: "selling_price" as const,
       label: "Price",
       sortable: true,
@@ -143,11 +126,8 @@ export default function ProductsClient({
       label: "Status",
       sortable: false,
       render: (_value: boolean | null, row: Product) => {
-        const isLowStock = row.stock_quantity <= (row.min_stock_quantity ?? 0);
-        const status = isLowStock ? "Low Stock" : "In Stock";
-        const colorClass = isLowStock
-          ? "bg-yellow-100 text-yellow-800"
-          : "bg-green-100 text-green-800";
+        const status = row.is_active === false ? "Archived" : "Active";
+        const colorClass = row.is_active === false ? "bg-muted text-muted-foreground" : "bg-green-100 text-green-800";
         return (
           <span
             className={`px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}
@@ -204,7 +184,7 @@ export default function ProductsClient({
         <div>
           <h1 className="text-3xl font-bold text-foreground">Products</h1>
           <p className="text-muted-foreground">
-            Manage products, images, categories, and stock.
+            Manage product information, units, prices, images, and categories.
           </p>
         </div>
         <Button asChild>
@@ -215,7 +195,7 @@ export default function ProductsClient({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-sm text-muted-foreground">Active Products</p>
           <p className="text-2xl font-bold text-foreground">
@@ -226,18 +206,6 @@ export default function ProductsClient({
           <p className="text-sm text-muted-foreground">Categories</p>
           <p className="text-2xl font-bold text-foreground">
             {stats.totalCategories}
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Low Stock</p>
-          <p className="text-2xl font-bold text-yellow-400">
-            {stats.lowStockCount}
-          </p>
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">Inventory Value</p>
-          <p className="text-2xl font-bold text-foreground">
-            Rs {stats.inventoryValue.toLocaleString()}
           </p>
         </div>
       </div>
@@ -256,8 +224,7 @@ export default function ProductsClient({
                 No products yet
               </h2>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Add your first product with opening stock to start building
-                inventory history.
+                Add your first product with its default unit and pricing.
               </p>
               <Button className="mt-5" asChild>
                 <Link href="/products/new">
