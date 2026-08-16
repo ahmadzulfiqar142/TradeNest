@@ -1,43 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, createAdminClient } from "@/supabase/server";
+import { createClient } from "@/supabase/server";
 import { createPaymentSchema, updatePaymentSchema } from "@/schemas/payment";
+import { getAuthorizedUser } from "@/lib/auth/workspace";
+import { consumeAdvancePayments } from "@/lib/advance-payments";
 
 export type PaymentActionState = {
   message: string;
   success: boolean;
 };
-
-async function getAuthorizedUser(workspaceId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { supabase, user: null, error: "Unauthorized" };
-  }
-
-  const admin = createAdminClient();
-  const { data: member } = await admin
-    .from("workspace_members")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!member) {
-    return {
-      supabase,
-      user: null,
-      error: "You do not have access to this workspace.",
-    };
-  }
-
-  return { supabase, user, error: null };
-}
 
 async function updateSaleStatus(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -127,7 +99,6 @@ export async function createPayment(
   }
 
   // When paying via advance, consume existing unlinked advance payments oldest-first
-  // instead of inserting a new record (which would leave the original advance untouched)
   if (v.paymentMethod === "advance" && v.saleId) {
     const { data: advancePayments } = await supabase
       .from("payments")
@@ -135,71 +106,17 @@ export async function createPayment(
       .eq("workspace_id", workspaceId)
       .eq("customer_id", v.customerId)
       .is("sale_id", null)
-      .is("deleted_at", null)
-      .order("payment_date", { ascending: true });
+      .is("deleted_at", null);
 
-    if (!advancePayments || advancePayments.length === 0) {
+    const totalAvailable = (advancePayments ?? []).reduce((s, p) => s + Number(p.amount), 0);
+    if (totalAvailable < 0.001) {
       return { message: "No advance balance available for this customer.", success: false };
     }
-
-    const totalAdvailable = advancePayments.reduce((s, p) => s + Number(p.amount), 0);
-    if (v.amount > totalAdvailable + 0.001) {
-      return { message: `Advance balance (Rs. ${totalAdvailable.toFixed(2)}) is less than payment amount.`, success: false };
+    if (v.amount > totalAvailable + 0.001) {
+      return { message: `Advance balance (Rs. ${totalAvailable.toFixed(2)}) is less than payment amount.`, success: false };
     }
 
-    let remaining = v.amount;
-    for (const adv of advancePayments) {
-      if (remaining <= 0) break;
-      const consume = Math.min(Number(adv.amount), remaining);
-
-      if (consume >= Number(adv.amount)) {
-        // Fully consumed — link to this sale
-        await supabase
-          .from("payments")
-          .update({
-            sale_id: v.saleId,
-            notes: v.notes ?? `Advance applied to invoice`,
-          })
-          .eq("id", adv.id);
-      } else {
-        // Partially consumed — shrink original, create linked record for used portion
-        await supabase
-          .from("payments")
-          .update({ amount: Number(adv.amount) - consume })
-          .eq("id", adv.id);
-
-        const { data: newAdv } = await supabase
-          .from("payments")
-          .insert({
-            workspace_id: workspaceId,
-            customer_id: v.customerId,
-            sale_id: v.saleId,
-            amount: consume,
-            payment_method: "advance",
-            payment_date: v.paymentDate,
-            notes: v.notes ?? `Advance applied to invoice`,
-            created_by: user.id,
-          })
-          .select("id")
-          .single();
-
-        if (newAdv) {
-          await supabase.rpc("update_customer_ledger", {
-            p_customer_id: v.customerId,
-            p_workspace_id: workspaceId,
-            p_transaction_type: "payment",
-            p_reference_type: "payment",
-            p_reference_id: newAdv.id,
-            p_debit: 0,
-            p_credit: consume,
-            p_description: "Advance applied to invoice",
-          });
-        }
-      }
-
-      remaining -= consume;
-    }
-
+    await consumeAdvancePayments(supabase, workspaceId, v.customerId, v.saleId, v.amount, v.paymentDate, user.id);
     await updateSaleStatus(supabase, v.saleId, workspaceId);
     revalidatePath("/payments");
     revalidatePath(`/customers/${v.customerId}`);

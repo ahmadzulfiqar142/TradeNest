@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, createAdminClient } from "@/supabase/server";
+import { createClient } from "@/supabase/server";
 import { createSaleSchema } from "@/schemas/sale";
+import { getAuthorizedUser } from "@/lib/auth/workspace";
+import { consumeAdvancePayments } from "@/lib/advance-payments";
 
 type ProductUnit = {
   unitId: string;
@@ -17,30 +19,6 @@ export type SaleActionState = {
   success: boolean;
   saleId?: string;
 };
-
-async function getAuthorizedUser(workspaceId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user)
-    return { supabase, user: null, error: "Unauthorized" };
-
-  const admin = createAdminClient();
-  const { data: member } = await admin
-    .from("workspace_members")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!member)
-    return { supabase, user: null, error: "No access to this workspace." };
-
-  return { supabase, user, error: null };
-}
 
 async function generateInvoiceNumber(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -197,64 +175,17 @@ export async function cancelSale(
   if (error || !user)
     return { message: error ?? "Unauthorized", success: false };
 
-  const { data: sale } = await supabase
-    .from("sales")
-    .select("status, customer_id, invoice_number, total")
-    .eq("id", saleId)
-    .eq("workspace_id", workspaceId)
-    .single();
+  const { error: rpcError } = await supabase.rpc("cancel_sale_transaction", {
+    p_workspace_id: workspaceId,
+    p_sale_id: saleId,
+    p_user_id: user.id,
+  });
 
-  if (!sale) return { message: "Sale not found", success: false };
-  if (sale.status === "cancelled")
-    return { message: "Sale already cancelled", success: false };
-
-  const { error: updateError } = await supabase
-    .from("sales")
-    .update({ status: "cancelled", payment_status: "pending" })
-    .eq("id", saleId)
-    .eq("workspace_id", workspaceId);
-
-  if (updateError) return { message: updateError.message, success: false };
-
-  // Restore stock
-  const { data: items } = await supabase
-    .from("sale_items")
-    .select("product_id, quantity")
-    .eq("sale_id", saleId);
-
-  for (const item of items ?? []) {
-    if (!item.product_id) continue;
-
-    const { data: product } = await supabase
-      .from("products")
-      .select("stock_quantity")
-      .eq("id", item.product_id)
-      .single();
-
-    if (product) {
-      const newStock = product.stock_quantity + item.quantity;
-      await supabase
-        .from("products")
-        .update({ stock_quantity: newStock })
-        .eq("id", item.product_id);
-
-      await supabase.from("inventory_transactions").insert({
-        workspace_id: workspaceId,
-        product_id: item.product_id,
-        transaction_type: "in",
-        quantity: item.quantity,
-        previous_stock: product.stock_quantity,
-        new_stock: newStock,
-        reference_type: "sale_cancel",
-        reference_id: saleId,
-        notes: `Cancelled: ${sale.invoice_number}`,
-        created_by: user.id,
-      });
-    }
-  }
+  if (rpcError) return { message: rpcError.message, success: false };
 
   revalidatePath("/sales");
   revalidatePath(`/sales/${saleId}`);
+  revalidatePath("/inventory/current-stock");
   revalidatePath("/");
 
   return { message: "Sale cancelled successfully", success: true };
@@ -387,8 +318,8 @@ export async function getProductsForSale(workspaceId: string) {
     };
     const units = unitsByProduct.get(pu.product_id) || [];
     units.push({
-      unitId: pu.unit_id,
-      unitName: "", // Will be populated from units table
+      unitId: pu.id,        // product_units.id — what create_sale_transaction RPC expects
+      unitName: "",         // populated below from units table
       conversionFactor: pu.conversion_factor,
       isDefault: pu.is_default,
       sellingPrice: prices.selling_price,
@@ -396,7 +327,7 @@ export async function getProductsForSale(workspaceId: string) {
     unitsByProduct.set(pu.product_id, units);
   });
 
-  // Fetch unit names
+  // Fetch unit names (keyed by units.id for display only)
   const allUnitIds = Array.from(
     new Set((productUnits ?? []).map((pu) => pu.unit_id)),
   );
@@ -405,7 +336,13 @@ export async function getProductsForSale(workspaceId: string) {
     .select("id, name, abbreviation")
     .in("id", allUnitIds);
 
-  const unitNames = new Map((units ?? []).map((u) => [u.id, u.name]));
+  // Map product_units.id → unit name for display
+  const unitNameByProductUnitId = new Map(
+    (productUnits ?? []).map((pu) => [
+      pu.id,
+      (units ?? []).find((u) => u.id === pu.unit_id)?.name ?? pu.unit_id,
+    ]),
+  );
 
   // Attach units to products
   const stock = new Map(
@@ -419,7 +356,7 @@ export async function getProductsForSale(workspaceId: string) {
         stock_quantity: stock.get(product.id) ?? 0,
         units: productUnitsList.map((u) => ({
           ...u,
-          unitName: unitNames.get(u.unitId) || u.unitId,
+          unitName: unitNameByProductUnitId.get(u.unitId) || u.unitId,
         })),
       };
     }),
@@ -538,59 +475,8 @@ export async function updateSale(
     return { message: updateError.message, success: false };
   }
 
-  // If advance was used, create a payment record to track it
   if (advanceUsed > 0 && v.customerId) {
-    // Get the oldest advance payment to deduct from
-    const { data: advancePayments } = await supabase
-      .from("payments")
-      .select("id, amount")
-      .eq("workspace_id", workspaceId)
-      .eq("customer_id", v.customerId)
-      .is("sale_id", null)
-      .is("deleted_at", null)
-      .order("payment_date", { ascending: true })
-      .limit(1);
-
-    if (advancePayments && advancePayments.length > 0) {
-      const advancePayment = advancePayments[0];
-      const remainingAdvance = Number(advancePayment.amount) - advanceUsed;
-
-      // Update the advance payment record
-      if (remainingAdvance <= 0.01) {
-        // Delete the advance payment if fully consumed
-        await supabase.from("payments").delete().eq("id", advancePayment.id);
-      } else {
-        // Update the advance payment amount
-        await supabase
-          .from("payments")
-          .update({ amount: remainingAdvance })
-          .eq("id", advancePayment.id);
-      }
-
-      // Create a payment record linked to this sale
-      await supabase.from("payments").insert({
-        workspace_id: workspaceId,
-        customer_id: v.customerId,
-        sale_id: saleId,
-        amount: advanceUsed,
-        payment_method: "advance",
-        payment_date: v.saleDate,
-        notes: `Advance payment applied (edit)`,
-        created_by: user.id,
-      });
-
-      // Update customer ledger
-      await supabase.rpc("update_customer_ledger", {
-        p_customer_id: v.customerId,
-        p_workspace_id: workspaceId,
-        p_transaction_type: "payment",
-        p_reference_type: "sale",
-        p_reference_id: saleId,
-        p_debit: 0,
-        p_credit: advanceUsed,
-        p_description: `Advance payment applied to sale (edit)`,
-      });
-    }
+    await consumeAdvancePayments(supabase, workspaceId, v.customerId, saleId, advanceUsed, v.saleDate, user.id);
   }
 
   // Delete old sale items and insert new ones

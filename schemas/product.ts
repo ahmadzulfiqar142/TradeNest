@@ -29,7 +29,10 @@ export const createProductSchema = z
     value.units.forEach((unit, index) => {
       if (seen.has(unit.unitId)) context.addIssue({ code: "custom", message: "A unit can only be added once", path: ["units", index, "unitId"] });
       seen.add(unit.unitId);
-      if (unit.isDefault) defaultCount += 1;
+      if (unit.isDefault) {
+        defaultCount += 1;
+        if (unit.conversionFactor !== 1) context.addIssue({ code: "custom", message: "The default (base) unit must have a conversion factor of 1", path: ["units", index, "conversionFactor"] });
+      }
     });
     if (defaultCount !== 1) context.addIssue({ code: "custom", message: "Select exactly one default unit", path: ["units"] });
   });

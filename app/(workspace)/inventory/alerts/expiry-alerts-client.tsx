@@ -1,12 +1,19 @@
 "use client";
 
-import { AlertTriangle, Package, Clock } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Package, Clock, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { writeOffExpiredBatch } from "@/actions/batch";
 
 interface ExpiryAlertsClientProps {
+  workspaceId: string;
   expiringProducts: Array<{
     product_id: string;
     product_name: string;
+    batch_id: string | null;
+    batch_number: string | null;
     expiry_date: string;
     days_until_expiry: number;
     stock_quantity: number;
@@ -23,9 +30,25 @@ interface ExpiryAlertsClientProps {
 }
 
 export function ExpiryAlertsClient({
+  workspaceId,
   expiringProducts,
   lowStockProducts,
 }: ExpiryAlertsClientProps) {
+  const { success, error } = useToast();
+  const [writingOff, setWritingOff] = useState<string | null>(null);
+  const [writeOffTarget, setWriteOffTarget] = useState<string | null>(null);
+
+  async function confirmWriteOff(batchId: string) {
+    setWritingOff(batchId);
+    const result = await writeOffExpiredBatch(workspaceId, batchId);
+    if (result.success) {
+      success("Written off", result.message);
+    } else {
+      error("Error", result.message);
+    }
+    setWritingOff(null);
+    setWriteOffTarget(null);
+  }
   const expiredProducts = expiringProducts.filter(
     (p) => p.days_until_expiry < 0,
   );
@@ -157,7 +180,7 @@ export function ExpiryAlertsClient({
             <div className="space-y-3">
               {expiredProducts.map((product) => (
                 <div
-                  key={product.product_id}
+                  key={product.batch_id ?? product.product_id}
                   className="flex items-center justify-between p-4 border border-red-200 rounded-lg bg-red-50"
                 >
                   <div className="flex-1">
@@ -167,13 +190,41 @@ export function ExpiryAlertsClient({
                     <p className="text-sm text-muted-foreground mt-1">
                       {product.category_name && `${product.category_name} • `}
                       Stock: {product.stock_quantity} units
+                      {product.batch_number &&
+                        ` • Batch: ${product.batch_number}`}
                     </p>
                     <p className="text-sm text-red-600 mt-1">
                       Expired on{" "}
                       {new Date(product.expiry_date).toLocaleDateString()}
                     </p>
                   </div>
-                  {getExpiryBadge(product.days_until_expiry)}
+                  <div className="flex items-center gap-2">
+                    {getExpiryBadge(product.days_until_expiry)}
+                    {product.batch_id && (
+                      <>
+                        <button
+                          onClick={() => setWriteOffTarget(product.batch_id!)}
+                          disabled={writingOff === product.batch_id}
+                          className="p-1.5 rounded text-red-600 hover:bg-red-100 disabled:opacity-50"
+                          title="Write off expired batch"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        <ConfirmDialog
+                          open={writeOffTarget === product.batch_id}
+                          onOpenChange={(open) =>
+                            !open && setWriteOffTarget(null)
+                          }
+                          onConfirm={() => confirmWriteOff(product.batch_id!)}
+                          title="Write off expired batch?"
+                          description={`This will permanently remove ${product.stock_quantity} units of ${product.product_name} (batch: ${product.batch_number ?? "N/A"}). This action cannot be undone.`}
+                          confirmText="Write off"
+                          cancelText="Cancel"
+                          variant="destructive"
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -194,7 +245,7 @@ export function ExpiryAlertsClient({
             <div className="space-y-3">
               {expiringSoonProducts.map((product) => (
                 <div
-                  key={product.product_id}
+                  key={product.batch_id ?? product.product_id}
                   className="flex items-center justify-between p-4 border border-yellow-200 rounded-lg bg-yellow-50"
                 >
                   <div className="flex-1">
@@ -204,6 +255,8 @@ export function ExpiryAlertsClient({
                     <p className="text-sm text-muted-foreground mt-1">
                       {product.category_name && `${product.category_name} • `}
                       Stock: {product.stock_quantity} units
+                      {product.batch_number &&
+                        ` • Batch: ${product.batch_number}`}
                     </p>
                     <p className="text-sm text-yellow-700 mt-1">
                       Expires on{" "}

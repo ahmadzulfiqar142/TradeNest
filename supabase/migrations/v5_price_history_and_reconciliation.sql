@@ -1,0 +1,26 @@
+-- ============================================================
+-- TICKET-11: Remove product_prices.effective_from (dead schema)
+-- Decision: price history is NOT a current requirement.
+-- replaceProductUnits deletes and reinserts on every edit, so
+-- effective_from was never functional. Removing it is cleaner
+-- than leaving misleading dead schema.
+-- ============================================================
+ALTER TABLE product_prices DROP COLUMN IF EXISTS effective_from;
+
+-- ============================================================
+-- TICKET-02: Reconciliation query
+-- Run this BEFORE applying v4_inventory_integrity.sql to
+-- quantify drift between the two stock sources.
+-- After v4 is applied, products.stock_quantity is renamed to
+-- stock_quantity_legacy and inventory is the sole source of truth.
+-- ============================================================
+-- SELECT
+--   p.id,
+--   p.name,
+--   p.stock_quantity        AS legacy_stock,
+--   i.current_stock         AS inventory_stock,
+--   p.stock_quantity - i.current_stock AS drift
+-- FROM products p
+-- LEFT JOIN inventory i ON i.product_id = p.id AND i.workspace_id = p.workspace_id
+-- WHERE p.stock_quantity IS DISTINCT FROM i.current_stock
+-- ORDER BY ABS(p.stock_quantity - COALESCE(i.current_stock, 0)) DESC;

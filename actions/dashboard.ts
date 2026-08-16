@@ -47,6 +47,8 @@ export type LowStockProduct = {
 export type ExpiryProduct = {
   product_id: string;
   product_name: string;
+  batch_id: string | null;
+  batch_number: string | null;
   expiry_date: string;
   days_until_expiry: number;
   stock_quantity: number;
@@ -254,6 +256,8 @@ export async function getExpiryProducts(
   return (data ?? []).map((p) => ({
     product_id: p.product_id,
     product_name: p.product_name,
+    batch_id: p.batch_id ?? null,
+    batch_number: p.batch_number ?? null,
     expiry_date: p.expiry_date,
     days_until_expiry: p.days_until_expiry,
     stock_quantity: p.stock_quantity,
