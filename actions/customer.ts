@@ -1,43 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient, createAdminClient } from "@/supabase/server";
+import { createClient } from "@/supabase/server"; // used by getCustomerDetails (unauthenticated read)
 import { createCustomerSchema } from "@/schemas/customer";
+import { getAuthorizedUser } from "@/lib/auth/workspace";
 
 export type CustomerActionState = {
   message: string;
   success: boolean;
 };
-
-async function getAuthorizedUser(workspaceId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { supabase, user: null, error: "Unauthorized" };
-  }
-
-  const admin = createAdminClient();
-  const { data: member } = await admin
-    .from("workspace_members")
-    .select("id")
-    .eq("workspace_id", workspaceId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!member) {
-    return {
-      supabase,
-      user: null,
-      error: "You do not have access to this workspace.",
-    };
-  }
-
-  return { supabase, user, error: null };
-}
 
 export async function createCustomer(
   workspaceId: string,

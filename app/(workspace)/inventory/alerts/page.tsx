@@ -33,6 +33,7 @@ export default async function ExpiryAlertsPage() {
 
   return (
     <ExpiryAlertsClient
+      workspaceId={workspaceId}
       expiringProducts={expiringProducts || []}
       lowStockProducts={lowStockProducts || []}
     />

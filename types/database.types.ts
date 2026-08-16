@@ -195,6 +195,7 @@ export interface Database {
           unit_id: string;
           conversion_factor: number;
           is_default: boolean;
+          is_base_unit: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -204,6 +205,7 @@ export interface Database {
           unit_id: string;
           conversion_factor: number;
           is_default?: boolean;
+          is_base_unit?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -802,6 +804,8 @@ export interface Database {
         Returns: {
           product_id: string;
           product_name: string;
+          batch_id: string | null;
+          batch_number: string | null;
           expiry_date: string;
           days_until_expiry: number;
           stock_quantity: number;
@@ -820,6 +824,35 @@ export interface Database {
           selling_price: number;
           category_name: string | null;
         }[];
+      };
+      stock_in_batch: {
+        Args: {
+          p_workspace_id: string;
+          p_product_id: string;
+          p_product_unit_id: string;
+          p_quantity: number;
+          p_batch_number: string | null;
+          p_expiry_date: string | null;
+          p_purchase_price: number;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
+      write_off_expired_batch: {
+        Args: {
+          p_workspace_id: string;
+          p_batch_id: string;
+          p_user_id: string;
+        };
+        Returns: string;
+      };
+      cancel_sale_transaction: {
+        Args: {
+          p_workspace_id: string;
+          p_sale_id: string;
+          p_user_id: string;
+        };
+        Returns: string;
       };
     };
     Enums: {
