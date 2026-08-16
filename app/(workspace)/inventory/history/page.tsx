@@ -20,12 +20,12 @@ export default async function InventoryHistoryPage({
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const [{ data: transactions }, { data: products }, { data: units }] =
+  const [{ data: transactions }, { data: products }, { data: units }, { data: inventoryRows }] =
     await Promise.all([
       supabase
         .from("inventory_transactions")
         .select(
-          "id, product_id, transaction_type, quantity, new_stock, reference_type, notes, created_at, inventory(base_unit_id)",
+          "id, product_id, transaction_type, quantity, new_stock, reference_type, notes, created_at",
           { count: "exact", head: false },
         )
         .eq("workspace_id", workspaceId)
@@ -36,6 +36,10 @@ export default async function InventoryHistoryPage({
         .select("id, name")
         .eq("workspace_id", workspaceId),
       supabase.from("units").select("id, symbol"),
+      supabase
+        .from("inventory")
+        .select("product_id, base_unit_id")
+        .eq("workspace_id", workspaceId),
     ]);
 
   const { count } = await supabase
@@ -47,6 +51,9 @@ export default async function InventoryHistoryPage({
     (products ?? []).map((product) => [product.id, product.name]),
   );
   const unitSymbols = new Map((units ?? []).map((u) => [u.id, u.symbol]));
+  const productUnitId = new Map(
+    (inventoryRows ?? []).map((r) => [r.product_id, r.base_unit_id]),
+  );
   const totalPages = count ? Math.max(1, Math.ceil(count / PAGE_SIZE)) : 1;
 
   const buildPageHref = (targetPage: number) =>
@@ -74,8 +81,8 @@ export default async function InventoryHistoryPage({
           </thead>
           <tbody>
             {transactions?.map((item) => {
-              const inv = item.inventory as { base_unit_id: string } | null;
-              const unit = inv ? (unitSymbols.get(inv.base_unit_id) ?? "unit") : "unit";
+              const unitId = productUnitId.get(item.product_id);
+              const unit = unitId ? (unitSymbols.get(unitId) ?? "unit") : "unit";
               return (
               <tr key={item.id} className="border-t">
                 <td className="p-3">
