@@ -259,12 +259,6 @@ export function CreateProductForm({
           <div className="mb-3 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Units and pricing</h2>
-              <p className="text-sm text-muted-foreground">
-                The <strong>default unit</strong> is your base unit (conversion = 1) — pick the smallest
-                one you sell in, e.g. grams instead of kilograms. Standard units (kg, g, mg, L, ml, dozen)
-                convert automatically. For packaging (Bag, Box, Carton...), just say how much one contains,
-                e.g. &ldquo;1 Bag = 50 kg&rdquo;, and it&apos;s converted for you.
-              </p>
             </div>
             <Button
               type="button"
@@ -285,101 +279,167 @@ export function CreateProductForm({
           </div>
 
           <div className="space-y-3">
+            {/* Column headers — desktop only */}
+            <div className="hidden md:grid gap-3 md:grid-cols-[1.3fr_1.4fr_repeat(2,1fr)_auto] px-3 text-xs font-medium text-muted-foreground">
+              <span>Unit</span>
+              <span>Conversion</span>
+              <span>Selling Price</span>
+              <span>Purchase Price</span>
+              <span>Default</span>
+            </div>
             {fields.fields.map((item, index) => (
-              <div key={item.id} className="grid gap-3 rounded-lg border p-3 md:grid-cols-[1.3fr_1.4fr_repeat(2,1fr)_auto]">
-                <FormField
-                  control={form.control}
-                  name={`units.${index}.unitId`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="md:hidden">Unit</FormLabel>
-                      <FormControl>
-                        <select {...field} className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
-                          <option value="">Select unit</option>
-                          {units.map((unit) => (
-                            <option key={unit.id} value={unit.id}>
-                              {unit.name} ({unit.symbol})
-                            </option>
-                          ))}
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div key={item.id} className="rounded-lg border p-3 space-y-3">
+                {/* Main unit row */}
+                <div className="grid gap-3 md:grid-cols-[1.3fr_1.4fr_repeat(2,1fr)_auto]">
+                  <FormField
+                    control={form.control}
+                    name={`units.${index}.unitId`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl>
+                          <select {...field} className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm">
+                            <option value="">Select unit</option>
+                            {units.map((unit) => (
+                              <option key={unit.id} value={unit.id}>
+                                {unit.name} ({unit.symbol})
+                              </option>
+                            ))}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div>
+                    <UnitConversionField form={form} index={index} unitsById={unitsById} baseUnit={baseUnit} />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`units.${index}.sellingPrice`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Selling</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            placeholder="Selling price"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`units.${index}.purchasePrice`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Purchase</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                            placeholder="Purchase price"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`units.${index}.isDefault`}
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 pt-2">
+                        <FormControl>
+                          <input
+                            type="radio"
+                            checked={field.value}
+                            onChange={() => {
+                              fields.fields.forEach((_, i) => form.setValue(`units.${i}.isDefault`, i === index));
+                              form.setValue(`units.${index}.conversionFactor`, 1);
+                            }}
+                          />
+                        </FormControl>
+                        <FormLabel>Default</FormLabel>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => fields.remove(index)}
+                          disabled={fields.fields.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-                <UnitConversionField form={form} index={index} unitsById={unitsById} baseUnit={baseUnit} />
-
-                <FormField
-                  control={form.control}
-                  name={`units.${index}.sellingPrice`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="md:hidden">Selling</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          placeholder="Selling price"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`units.${index}.purchasePrice`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="md:hidden">Purchase</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber)}
-                          placeholder="Purchase price"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name={`units.${index}.isDefault`}
-                  render={({ field }) => (
-                    <FormItem className="flex items-center gap-2 pt-2">
-                      <FormControl>
-                        <input
-                          type="radio"
-                          checked={field.value}
-                          onChange={() => {
-                            fields.fields.forEach((_, i) => form.setValue(`units.${i}.isDefault`, i === index));
-                            form.setValue(`units.${index}.conversionFactor`, 1);
-                          }}
-                        />
-                      </FormControl>
-                      <FormLabel>Default</FormLabel>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => fields.remove(index)}
-                        disabled={fields.fields.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </FormItem>
-                  )}
-                />
+                {/* Bag weight — only for packaging units */}
+                {(() => {
+                  const selectedUnit = watchedUnits[index]?.unitId ? unitsById.get(watchedUnits[index].unitId) : undefined;
+                  if (selectedUnit?.type !== 'packaging') return null;
+                  return (
+                    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.bagWeight`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight per {selectedUnit.name}</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min="0.001"
+                                step="any"
+                                placeholder="e.g. 50"
+                                value={field.value ?? ''}
+                                onChange={(e) => field.onChange(e.target.value ? e.target.valueAsNumber : null)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name={`units.${index}.bagWeightUnit`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Weight unit</FormLabel>
+                            <FormControl>
+                              <select
+                                {...field}
+                                value={field.value ?? 'kg'}
+                                className="flex h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                              >
+                                <option value="kg">Kilogram (kg)</option>
+                                <option value="g">Gram (g)</option>
+                                <option value="mg">Milligram (mg)</option>
+                                <option value="L">Liter (L)</option>
+                                <option value="ml">Milliliter (ml)</option>
+                                <option value="pc">Piece (pc)</option>
+                              </select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             ))}
+
           </div>
           <FormMessage>{form.formState.errors.units?.message}</FormMessage>
         </section>

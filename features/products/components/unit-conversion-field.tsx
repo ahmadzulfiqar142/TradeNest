@@ -94,10 +94,15 @@ export function UnitConversionField({
   if (isDefault) {
     return (
       <div>
-        <span className="text-sm font-medium md:hidden">Conversion</span>
-        <div className="flex h-10 items-center rounded-lg border border-dashed bg-muted/40 px-3 text-sm text-muted-foreground">
-          Base unit (= 1)
-        </div>
+        <span className="text-sm font-medium">Conversion</span>
+        <Input
+          type="number"
+          min="0.000001"
+          step="any"
+          value={currentFactor}
+          onChange={(e) => form.setValue(`units.${index}.conversionFactor`, e.target.valueAsNumber)}
+          placeholder="1"
+        />
       </div>
     );
   }
@@ -106,7 +111,7 @@ export function UnitConversionField({
     const factor = getAutoConversionFactor(baseUnit.type, selectedUnit.symbol, baseUnit.symbol);
     return (
       <div>
-        <span className="text-sm font-medium md:hidden">Conversion</span>
+        <span className="text-sm font-medium">Conversion</span>
         <div className="flex h-10 items-center gap-2 rounded-lg border bg-muted/40 px-3 text-sm">
           <span>
             1 {selectedUnit.symbol} = {factor} {baseUnit.symbol}
@@ -134,7 +139,7 @@ export function UnitConversionField({
 
     return (
       <div className="space-y-1">
-        <span className="text-sm font-medium md:hidden">
+        <span className="text-sm font-medium">
           1 {selectedUnit.symbol} equals
         </span>
         <div className="flex gap-2">
@@ -166,10 +171,10 @@ export function UnitConversionField({
     );
   }
 
-  // Fallback — no fixed ratio and no usable reference unit (rare).
+  // Fallback
   return (
     <div>
-      <span className="text-sm font-medium md:hidden">Conversion (base units)</span>
+      <span className="text-sm font-medium">Conversion</span>
       <Input
         type="number"
         min="0.000001"

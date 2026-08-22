@@ -258,7 +258,9 @@ BEGIN
 
   -- Mark sale as cancelled atomically
   UPDATE sales
-    SET status = 'cancelled', payment_status = 'pending', updated_at = NOW()
+    SET status = 'cancelled',
+        payment_status = CASE WHEN paid_amount > 0 THEN 'refunded' ELSE 'pending' END,
+        updated_at = NOW()
   WHERE id = p_sale_id AND workspace_id = p_workspace_id;
 END;
 $$;
