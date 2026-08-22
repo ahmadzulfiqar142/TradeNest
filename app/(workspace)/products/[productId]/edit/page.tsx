@@ -32,7 +32,7 @@ export default async function EditProductPage({
       .select("id, name")
       .eq("workspace_id", workspaceId)
       .order("name", { ascending: true }),
-    supabase.from("units").select("id, name, symbol").order("name", { ascending: true }),
+    supabase.from("units").select("id, name, symbol, type").order("name", { ascending: true }),
     supabase.from("product_units").select("id, unit_id, conversion_factor, is_default").eq("product_id", productId),
   ]);
 

@@ -13,7 +13,7 @@ export default async function NewProductPage() {
 
   const [{ data: categories }, { data: units }] = await Promise.all([
     supabase.from("categories").select("id, name").eq("workspace_id", workspaceId).eq("is_active", true).order("name", { ascending: true }),
-    supabase.from("units").select("id, name, symbol").order("name", { ascending: true }),
+    supabase.from("units").select("id, name, symbol, type").order("name", { ascending: true }),
   ]);
 
   return (
