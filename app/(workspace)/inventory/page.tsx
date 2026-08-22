@@ -59,9 +59,6 @@ export default async function InventoryPage() {
         </div>
         <div className="flex gap-2">
           <Button asChild>
-            <Link href="/inventory/stock-in">Stock in</Link>
-          </Button>
-          <Button asChild variant="outline">
             <Link href="/inventory/adjustments">Adjust stock</Link>
           </Button>
           <Button asChild variant="ghost">

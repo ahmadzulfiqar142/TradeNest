@@ -32,8 +32,8 @@ export default async function EditProductPage({
       .select("id, name")
       .eq("workspace_id", workspaceId)
       .order("name", { ascending: true }),
-    supabase.from("units").select("id, name, symbol").order("name", { ascending: true }),
-    supabase.from("product_units").select("id, unit_id, conversion_factor, is_default").eq("product_id", productId),
+    supabase.from("units").select("id, name, symbol, type").order("name", { ascending: true }),
+    supabase.from("product_units").select("id, unit_id, conversion_factor, is_default, bag_weight, bag_weight_unit").eq("product_id", productId),
   ]);
 
   if (!product) notFound();
@@ -45,7 +45,7 @@ export default async function EditProductPage({
     ...product,
     units: (productUnits ?? []).map((unit) => {
       const price = prices?.find((item) => item.product_unit_id === unit.id);
-      return { unitId: unit.unit_id, conversionFactor: Number(unit.conversion_factor), isDefault: unit.is_default, sellingPrice: Number(price?.selling_price ?? 0), purchasePrice: Number(price?.purchase_price ?? 0) };
+      return { unitId: unit.unit_id, conversionFactor: Number(unit.conversion_factor), isDefault: unit.is_default, sellingPrice: Number(price?.selling_price ?? 0), purchasePrice: Number(price?.purchase_price ?? 0), bagWeight: unit.bag_weight ? Number(unit.bag_weight) : null, bagWeightUnit: unit.bag_weight_unit ?? null };
     }),
   };
 

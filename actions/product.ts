@@ -64,6 +64,7 @@ async function replaceProductUnits(
   // The base unit is the first unit with conversion_factor = 1; fall back to the default unit.
   // Only ONE unit can be marked as base unit per product (database constraint).
   const baseUnit =
+    values.units.find((u) => u.conversionFactor === 1 && u.isDefault) ||
     values.units.find((u) => u.conversionFactor === 1) ||
     values.units.find((u) => u.isDefault);
   const baseUnitId = baseUnit?.unitId;
@@ -76,6 +77,8 @@ async function replaceProductUnits(
         conversion_factor: unit.conversionFactor,
         is_default: unit.isDefault,
         is_base_unit: unit.unitId === baseUnitId,
+        bag_weight: unit.bagWeight ?? null,
+        bag_weight_unit: unit.bagWeightUnit ?? null,
       })),
     )
     .select("id, unit_id");

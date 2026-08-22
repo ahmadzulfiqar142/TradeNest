@@ -13,17 +13,3 @@ export type InventoryAdjustmentValues = z.infer<
   typeof inventoryAdjustmentSchema
 >;
 
-export const stockInBatchSchema = z.object({
-  productId: z.string().uuid("Select a product"),
-  productUnitId: z.string().uuid("Select a unit"),
-  quantity: z
-    .number({ error: "Enter a quantity" })
-    .positive("Quantity must be greater than zero"),
-  batchNumber: z.string().trim().optional(),
-  expiryDate: z.string().optional(),
-  purchasePrice: z
-    .number({ error: "Enter a price" })
-    .min(0, "Price cannot be negative"),
-});
-
-export type StockInBatchValues = z.infer<typeof stockInBatchSchema>;

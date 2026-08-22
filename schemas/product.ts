@@ -9,6 +9,8 @@ export const productUnitSchema = z.object({
   isDefault: z.boolean(),
   sellingPrice: money,
   purchasePrice: money,
+  bagWeight: z.number().positive().nullable().optional(),
+  bagWeightUnit: z.string().nullable().optional(),
 });
 
 export const createProductSchema = z

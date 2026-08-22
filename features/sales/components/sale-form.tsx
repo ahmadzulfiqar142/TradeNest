@@ -149,16 +149,20 @@ export function SaleForm({
 
   function addProductItem() {
     const p = products[0];
+    if (!p) return;
+    const defaultUnit = p.units.find((u) => u.isDefault) || p.units[0];
     form.setValue("items", [
       ...items,
       {
         type: LineItemType.Product,
-        productId: p?.id ?? "",
-        productName: p?.name ?? "",
+        productId: p.id,
+        productName: p.name,
+        productUnitId: defaultUnit?.unitId ?? null,
+        unitName: defaultUnit?.unitName ?? "pc",
         quantity: 1,
-        unitPrice: p?.selling_price ?? 0,
+        unitPrice: defaultUnit?.sellingPrice ?? p.selling_price,
         discount: 0,
-        total: p?.selling_price ?? 0,
+        total: defaultUnit?.sellingPrice ?? p.selling_price,
       },
     ]);
   }
@@ -366,18 +370,19 @@ export function SaleForm({
                               (p) => p.id === item.productId,
                             );
                             const units = product?.units || [];
-                            return units.length > 1 ? (
+                            return units.length > 0 ? (
                               <select
                                 value={item.productUnitId ?? ""}
                                 onChange={(e) =>
                                   selectUnit(index, e.target.value || null)
                                 }
                                 className="mt-1 flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+
                               >
                                 {units.map((unit) => (
                                   <option key={unit.unitId} value={unit.unitId}>
-                                    {unit.unitName}{" "}
-                                    {unit.isDefault ? "(Default)" : ""}
+                                    {unit.unitName}
+                                    {unit.isDefault ? " (Default)" : ""}
                                   </option>
                                 ))}
                               </select>
